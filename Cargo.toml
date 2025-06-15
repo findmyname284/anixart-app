@@ -1,0 +1,19 @@
+[package]
+name = "anixart-app"
+version = "0.1.0-beta"
+edition = "2024"
+authors = ["findmyname284"]
+license = "MIT"
+build = "build.rs"
+
+[build-dependencies]
+glib-build-tools = "0.20.0"
+
+[dependencies]
+gtk = { version = "0.9.6", package = "gtk4", features = ["v4_12"] }
+gdk = { version = "0.9.6", package = "gdk4" }
+adw = { version = "0.7.2", package = "libadwaita" }
+glib = { version = "0.20.10", features = ["v2_74"] }
+gio = { version = "0.20.11", features = ["v2_74"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"

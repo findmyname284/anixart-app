@@ -1,0 +1,60 @@
+#login_window {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%) !important;
+    color: white;
+}
+
+#title_label {
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: white;
+    margin-bottom: 30px;
+}
+
+entryrow {
+    background: rgba(255, 255, 255, 0.1);
+    border: solid 1px rgba(255, 255, 255, 0.3);
+    border-radius: 25px;
+    padding: 12px 20px;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+}
+
+entryrow:focus {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+entry image {
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0 10px;
+}
+
+#login_button {
+    background: #fff;
+    color: #6a11cb;
+    border-radius: 25px;
+    padding: 10px;
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+#login_button:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+linkbutton {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+}
+
+linkbutton:hover {
+    color: white;
+    text-decoration: underline;
+}

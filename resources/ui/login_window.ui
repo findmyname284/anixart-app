@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.18" />
+    <requires lib="libadwaita" version="1.0" />
+
+    <object class="AdwApplicationWindow" id="login_window">
+        <property name="title">Anixart - Вход</property>
+        <property name="default-width">300</property>
+        <property name="default-height">400</property>
+        <property name="resizable">false</property>
+
+        <child>
+            <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="spacing">20</property>
+                <property name="margin-top">50</property>
+                <property name="margin-bottom">50</property>
+                <property name="margin-start">50</property>
+                <property name="margin-end">50</property>
+                <property name="valign">center</property>
+
+                <child>
+                    <object class="GtkImage" id="logo">
+                        <property name="pixel-size">80</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkLabel" id="title_label">
+                        <property name="label">ANIXART</property>
+                        <property name="css-classes">title-1</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="AdwEntryRow" id="username_row">
+                        <property name="title">Имя пользователя</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="AdwPasswordEntryRow" id="password_row">
+                        <property name="title">Пароль</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkButton" id="login_button">
+                        <property name="label">Войти</property>
+                        <property name="css-classes">suggested-action,pill</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">10</property>
+                        <property name="halign">center</property>
+
+                        <child>
+                            <object class="GtkLinkButton" id="register_button">
+                                <property name="label">Регистрация</property>
+                            </object>
+                        </child>
+
+                        <child>
+                            <object class="GtkLinkButton" id="forgot_button">
+                                <property name="label">Забыли пароль?</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child>
+                    <object class="GtkButton" id="skip_button">
+                        <property name="label">Пропустить</property>
+                        <property name="css-classes">suggested-action,pill</property>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </object>
+</interface>

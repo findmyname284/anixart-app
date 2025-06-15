@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="/kz/findmyname284/anixartd">
+        <file>img/logo_light.png</file>
+        <file preprocess="xml-stripblanks">ui/login_window.ui</file>
+        <file preprocess="xml-stripblanks">ui/main_window.ui</file>
+        <file>img/logo_dark.png</file>
+    </gresource>
+</gresources>
