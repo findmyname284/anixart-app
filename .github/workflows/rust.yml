@@ -18,7 +18,15 @@ jobs:
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       # Шаг 4: Установите GTK4
       - name: Install GTK4
-        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-4-dev \
+            libgirepository1.0-dev \
+            libcairo2-dev \
+            libpango1.0-dev \
+            build-essential \
+            libadwaita-1
       # Шаг 5: Соберите проект
       - name: Build
         run: cargo build --release

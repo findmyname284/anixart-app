@@ -1,0 +1,73 @@
+name: Rust CI Windows
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Установка Rust
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+          profile: minimal
+          override: true
+
+      # Установка зависимостей GTK4 для Windows
+      - name: Install GTK dependencies
+        run: |
+          # Скачивание и распаковка GTK4 для Windows
+          Invoke-WebRequest -Uri "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/4.8.1-1/gtk-runtime-4.8.1-1-x64.exe" -OutFile "gtk-runtime.exe"
+          Start-Process -Wait -FilePath ".\gtk-runtime.exe" -ArgumentList "/SILENT", "/NORESTART"
+          Remove-Item -Path "gtk-runtime.exe"
+          
+          # Добавление GTK в PATH
+          $gtkPath = "C:\gtk"
+          $env:PATH = "$gtkPath\bin;" + $env:PATH
+          Add-Content $env:GITHUB_ENV "PATH=$env:PATH"
+
+      # Установка дополнительных инструментов сборки
+      - name: Install build tools
+        run: |
+          choco install -y pkgconfiglite
+          refreshenv
+
+      # Сборка проекта
+      - name: Build
+        run: cargo build --release
+        env:
+          PKG_CONFIG_PATH: "C:\\gtk\\lib\\pkgconfig"
+          GTK_LIB_DIR: "C:\\gtk\\lib"
+          GTK_INCLUDE_DIR: "C:\\gtk\\include"
+
+      # Копирование GTK DLL рядом с бинарником
+      - name: Bundle GTK DLLs
+        run: |
+          $releaseDir = "target\release"
+          Copy-Item "C:\gtk\bin\gtk-4.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\gdk-4.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\glib-2.0-0.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\gobject-2.0-0.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\cairo-2.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\epoxy-0.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\graphene-1.0-0.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\pango-1.0-0.dll" -Destination $releaseDir
+          Copy-Item "C:\gtk\bin\pangocairo-1.0-0.dll" -Destination $releaseDir
+
+      # Загрузка артефактов
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: |
+            target/release/anixart-app.exe
+            target/release/*.dll
