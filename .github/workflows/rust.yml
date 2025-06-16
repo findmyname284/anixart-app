@@ -42,11 +42,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Install GTK (MSYS2)
+      - name: Setup MSYS2 and install dependencies
         uses: msys2/setup-msys2@v2
         with:
           update: true
-          install: mingw-w64-x86_64-gtk4 mingw-w64-x86_64-rust
+          install: |
+            mingw-w64-x86_64-gtk4
+            mingw-w64-x86_64-pkgconf  # Ключевое исправление!
+            mingw-w64-x86_64-toolchain
+            base-devel
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -54,7 +58,10 @@ jobs:
           target: x86_64-pc-windows-gnu
       - name: Build
         shell: msys2 {0}
-        run: cargo build --release
+        run: |
+          # Явно указываем путь к pkg-config
+          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:/mingw64/share/pkgconfig"
+          cargo build --release
       - name: Fix DLL dependencies
         run: |
           cp "C:/msys64/mingw64/bin/"*.dll target/release/
@@ -63,4 +70,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-app
-          path: target/release/anixart-app.exe
+          path: target/release/*.exe
