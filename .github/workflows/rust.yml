@@ -33,7 +33,7 @@ jobs:
         run: cargo build --release
       # Загрузка артефакта
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: anixart-app-linux
           path: target/release/anixart-app
@@ -60,7 +60,7 @@ jobs:
           cp "C:/msys64/mingw64/bin/"*.dll target/release/
           cp "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" target/release/
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-app
           path: target/release/anixart-app.exe
