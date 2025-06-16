@@ -1,18 +1,15 @@
 name: Rust CI Windows
-
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
-
 jobs:
   build-windows:
     runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       # Установка Rust
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -21,53 +18,68 @@ jobs:
           target: x86_64-pc-windows-msvc
           profile: minimal
           override: true
-
-      # Установка зависимостей GTK4 для Windows
+      # Установка GTK4 через MSYS2
       - name: Install GTK dependencies
+        shell: pwsh
         run: |
-          # Скачивание и распаковка GTK4 для Windows
-          Invoke-WebRequest -Uri "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/4.8.1-1/gtk-runtime-4.8.1-1-x64.exe" -OutFile "gtk-runtime.exe"
-          Start-Process -Wait -FilePath ".\gtk-runtime.exe" -ArgumentList "/SILENT", "/NORESTART"
-          Remove-Item -Path "gtk-runtime.exe"
-          
-          # Добавление GTK в PATH
-          $gtkPath = "C:\gtk"
-          $env:PATH = "$gtkPath\bin;" + $env:PATH
+          # Скачивание и установка MSYS2
+          Invoke-WebRequest -Uri "https://github.com/msys2/msys2-installer/releases/download/2023-03-18/msys2-x86_64-20230318.exe" -OutFile msys2.exe
+          Start-Process -Wait -FilePath .\msys2.exe -ArgumentList 'install','--root','C:/msys64','--confirm-command'
+
+          # Обновление пакетов
+          C:\msys64\msys2_shell.cmd -defterm -here -no-start -c "pacman -Syu --noconfirm"
+
+          # Установка GTK4 и зависимостей
+          C:\msys64\msys2_shell.cmd -defterm -here -no-start -c "pacman -S --noconfirm mingw-w64-x86_64-gtk4 mingw-w64-x86_64-toolbase"
+
+          # Настройка переменных среды
+          $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin;$env:PATH"
           Add-Content $env:GITHUB_ENV "PATH=$env:PATH"
-
-      # Установка дополнительных инструментов сборки
-      - name: Install build tools
-        run: |
-          choco install -y pkgconfiglite
-          refreshenv
-
+          Add-Content $env:GITHUB_ENV "PKG_CONFIG_PATH=C:/msys64/mingw64/lib/pkgconfig"
+          Add-Content $env:GITHUB_ENV "GTK_LIB_DIR=C:/msys64/mingw64/lib"
+          Add-Content $env:GITHUB_ENV "GTK_INCLUDE_DIR=C:/msys64/mingw64/include"
+      # Кеширование зависимостей Cargo
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\.cargo\registry
+            ~\.cargo\git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
       # Сборка проекта
       - name: Build
         run: cargo build --release
-        env:
-          PKG_CONFIG_PATH: "C:\\gtk\\lib\\pkgconfig"
-          GTK_LIB_DIR: "C:\\gtk\\lib"
-          GTK_INCLUDE_DIR: "C:\\gtk\\include"
-
-      # Копирование GTK DLL рядом с бинарником
-      - name: Bundle GTK DLLs
+      # Копирование необходимых DLL
+      - name: Bundle DLLs
+        shell: pwsh
         run: |
           $releaseDir = "target\release"
-          Copy-Item "C:\gtk\bin\gtk-4.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\gdk-4.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\glib-2.0-0.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\gobject-2.0-0.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\cairo-2.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\epoxy-0.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\graphene-1.0-0.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\pango-1.0-0.dll" -Destination $releaseDir
-          Copy-Item "C:\gtk\bin\pangocairo-1.0-0.dll" -Destination $releaseDir
+          $dlls = @(
+            "libgtk-4-1.dll",
+            "libgdk-3-0.dll",
+            "libcairo-2.dll",
+            "libgobject-2.0-0.dll",
+            "libglib-2.0-0.dll",
+            "libepoxy-0.dll",
+            "libgirepository-1.0-1.dll",
+            "libpango-1.0-0.dll",
+            "libpangocairo-1.0-0.dll"
+          )
 
+          foreach ($dll in $dlls) {
+            $source = "C:\msys64\mingw64\bin\$dll"
+            if (Test-Path $source) {
+              Copy-Item $source -Destination $releaseDir
+            }
+          }
       # Загрузка артефактов
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-release
-          path: |
+          path: |-
             target/release/anixart-app.exe
             target/release/*.dll
