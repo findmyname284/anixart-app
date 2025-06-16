@@ -35,18 +35,12 @@ jobs:
           path: target/release/anixart-app
   build-windows:
     runs-on: windows-latest
-
+  
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Setup Rust (native Windows)
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: stable
-        target: x86_64-pc-windows-gnu
-
-    - name: Setup MSYS2 with GTK4
+  
+    - name: Setup MSYS2 and install dependencies
       uses: msys2/setup-msys2@v2
       with:
         update: true
@@ -54,24 +48,19 @@ jobs:
           mingw-w64-x86_64-gtk4
           mingw-w64-x86_64-pkgconf
           mingw-w64-x86_64-toolchain
-
-    - name: Add MSYS2 GTK to env (for pkg-config)
+          mingw-w64-x86_64-rust
+  
+    - name: Build (inside MSYS2)
+      shell: msys2 {0}
+      run: cargo build --release
+  
+    - name: Fix DLL dependencies
       run: |
-        echo "PKG_CONFIG_PATH=C:/msys64/mingw64/lib/pkgconfig;C:/msys64/mingw64/share/pkgconfig" >> $env:GITHUB_ENV
-        echo "PATH=C:/msys64/mingw64/bin;$env:PATH" >> $env:GITHUB_ENV
-      shell: pwsh
-
-    - name: Build with cargo
-      run: cargo build --release --target x86_64-pc-windows-gnu
-
-    - name: Copy DLLs for release
-      run: |
-        mkdir dist
-        copy target\x86_64-pc-windows-gnu\release\*.exe dist\
-        copy C:\msys64\mingw64\bin\*.dll dist\
-
+        cp "C:/msys64/mingw64/bin/"*.dll target/release/
+        cp "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" target/release/
+  
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: gtk-windows-app
-        path: dist/
+        name: windows-app
+        path: target/release/*.exe
