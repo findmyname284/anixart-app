@@ -35,38 +35,45 @@ jobs:
           path: target/release/anixart-app
   build-windows:
     runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup MSYS2 and install dependencies
-      uses: msys2/setup-msys2@v2
-      with:
-        update: true
-        install: |
-          mingw-w64-x86_64-gtk4
-          mingw-w64-x86_64-pkgconf
-          mingw-w64-x86_64-toolchain
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-gtk4
+            mingw-w64-x86_64-pkgconf
+            rustup
 
-    - name: Set up Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: stable
-        target: x86_64-pc-windows-gnu
+      - name: Set up Rust toolchain inside MSYS2
+        run: |
+          rustup default stable
+          rustup target add x86_64-pc-windows-gnu
 
-    - name: Build
-      shell: cmd
-      run: |
-        call "C:\msys64\msys2_shell.cmd" -defterm -no-start -mingw64 -c "cargo build --release"
-        if errorlevel 1 exit 1
+      - name: Build GTK4 App
+        env:
+          PKG_CONFIG_PATH: /mingw64/lib/pkgconfig:/mingw64/share/pkgconfig
+          PATH: /mingw64/bin:$PATH
+        run: |
+          cargo build --release --target x86_64-pc-windows-gnu
 
-    - name: Fix DLL dependencies
-      run: |
-        cp "C:/msys64/mingw64/bin/"*.dll target/release/
-        cp "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" target/release/
+      - name: Copy GTK DLLs
+        run: |
+          mkdir -p dist
+          cp target/x86_64-pc-windows-gnu/release/*.exe dist/
+          cp /mingw64/bin/*.dll dist/
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-app
-        path: target/release/*.exe
+      - name: Upload built artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gtk-windows-app
+          path: dist/
