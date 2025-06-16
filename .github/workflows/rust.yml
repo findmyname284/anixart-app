@@ -12,13 +12,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      # Установка Rust (общая для всех ОС)
+      
+      # Install Rust (common for all OS)
       - name: Install Rust
         shell: bash
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Add Rust to PATH
         shell: bash
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        
       # Linux-specific steps
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-24.04'
@@ -30,47 +32,63 @@ jobs:
             libcairo2-dev \
             libpango1.0-dev \
             build-essential \
-            libadwaita-1-dev
-      # Windows-specific steps (gvsbuild)
+            libadwaita-1-dev \
+            pkg-config
+            
+      # Windows-specific steps
       - name: Install Python (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          
+      - name: Install build tools (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          choco install -y pkgconfiglite
+          set PKG_CONFIG_PATH=C:\gtk-build\gtk\x64\release\lib\pkgconfig
+          echo "PKG_CONFIG_PATH=%PKG_CONFIG_PATH%" >> %GITHUB_ENV%
+          
       - name: Install gvsbuild and build GTK (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
         run: |
           pip install gvsbuild
-          gvsbuild build --vs-version 17 --enable-gi --py wheel gtk4
-      - name: Add GTK to PATH (Windows)
+          gvsbuild build --vs-ver 17 --enable-gi --py wheel gtk4
+          
+      - name: Setup GTK environment (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
         run: |
-          setx PATH "%PATH%;C:\gtk-build\gtk\x64\release\bin"
+          echo "C:\gtk-build\gtk\x64\release\bin" >> %GITHUB_PATH%
           echo "GTK_LIB_DIR=C:\gtk-build\gtk\x64\release\lib" >> %GITHUB_ENV%
           echo "GTK_INCLUDE_DIR=C:\gtk-build\gtk\x64\release\include" >> %GITHUB_ENV%
+          echo "RUSTFLAGS=-C target-feature=+crt-static" >> %GITHUB_ENV%
+          
       - name: Add Windows target
         if: matrix.os == 'windows-latest'
         run: rustup target add x86_64-pc-windows-msvc
-      # Сборка проекта
+        
+      # Build project
       - name: Build project
         env:
-          GTK_LIB_DIR: ${{ env.GTK_LIB_DIR }}
-          GTK_INCLUDE_DIR: ${{ env.GTK_INCLUDE_DIR }}
+          PKG_CONFIG_ALLOW_CROSS: 1
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             cargo build --release --target x86_64-pc-windows-msvc
           else
             cargo build --release
           fi
-      # Загрузка артефактов
+          
+      # Upload artifacts
       - name: Upload Linux artifact
         if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
         with:
           name: anixart-app-linux
           path: target/release/anixart-app
+          
       - name: Upload Windows artifact
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
