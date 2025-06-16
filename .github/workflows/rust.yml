@@ -36,44 +36,42 @@ jobs:
   build-windows:
     runs-on: windows-latest
 
-    defaults:
-      run:
-        shell: msys2 {0}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          update: true
-          install: >-
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-gtk4
-            mingw-w64-x86_64-pkgconf
-            rustup
+    - name: Setup Rust (native Windows)
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        target: x86_64-pc-windows-gnu
 
-      - name: Set up Rust toolchain inside MSYS2
-        run: |
-          rustup default stable
-          rustup target add x86_64-pc-windows-gnu
+    - name: Setup MSYS2 with GTK4
+      uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: |
+          mingw-w64-x86_64-gtk4
+          mingw-w64-x86_64-pkgconf
+          mingw-w64-x86_64-toolchain
 
-      - name: Build GTK4 App
-        env:
-          PKG_CONFIG_PATH: /mingw64/lib/pkgconfig:/mingw64/share/pkgconfig
-          PATH: /mingw64/bin:$PATH
-        run: |
-          cargo build --release --target x86_64-pc-windows-gnu
+    - name: Add MSYS2 GTK to env (for pkg-config)
+      run: |
+        echo "PKG_CONFIG_PATH=C:/msys64/mingw64/lib/pkgconfig;C:/msys64/mingw64/share/pkgconfig" >> $env:GITHUB_ENV
+        echo "PATH=C:/msys64/mingw64/bin;$env:PATH" >> $env:GITHUB_ENV
+      shell: pwsh
 
-      - name: Copy GTK DLLs
-        run: |
-          mkdir -p dist
-          cp target/x86_64-pc-windows-gnu/release/*.exe dist/
-          cp /mingw64/bin/*.dll dist/
+    - name: Build with cargo
+      run: cargo build --release --target x86_64-pc-windows-gnu
 
-      - name: Upload built artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gtk-windows-app
-          path: dist/
+    - name: Copy DLLs for release
+      run: |
+        mkdir dist
+        copy target\x86_64-pc-windows-gnu\release\*.exe dist\
+        copy C:\msys64\mingw64\bin\*.dll dist\
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: gtk-windows-app
+        path: dist/
