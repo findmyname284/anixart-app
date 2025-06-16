@@ -22,16 +22,7 @@ jobs:
       # Linux-specific steps
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-24.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-4-dev \
-            libgirepository1.0-dev \
-            libcairo2-dev \
-            libpango1.0-dev \
-            build-essential \
-            libadwaita-1-dev \
-            pkg-config
+        run: "sudo apt-get update\nsudo apt-get install -y \\\n  libgtk-4-dev \\\n  libgirepository1.0-dev \\\n  libcairo2-dev \\\n  libpango1.0-dev \\\n  build-essential \\\n  libadwaita-1-dev \\\n  pkg-config\n  \n"
       # Windows-specific steps
       - name: Install Chocolatey (Windows)
         if: matrix.os == 'windows-latest'
@@ -40,26 +31,35 @@ jobs:
           Set-ExecutionPolicy Bypass -Scope Process -Force
           [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
           iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-      - name: Install MSYS2 and dependencies (Windows)
+      - name: Install MSYS2 (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: choco install -y msys2
+      - name: Install GTK dependencies (Windows)
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
-          choco install -y msys2
-          # Обновляем окружение PATH для текущей сессии
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-      - name: Install GTK with MSYS2 (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: msys2 {0}
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --needed --noconfirm \
-            mingw-w64-x86_64-gtk4 \
-            mingw-w64-x86_64-pkg-config \
-            mingw-w64-x86_64-cairo \
-            mingw-w64-x86_64-gobject-introspection \
-            mingw-w64-x86_64-toolchain
-          echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=C:/msys64/mingw64/lib/pkgconfig" >> $GITHUB_ENV
+          # Используем явный путь к MSYS2 bash
+          $msysPath = "C:\tools\msys64\usr\bin\bash.exe"
+
+          # Первое обновление (может потребовать перезапуска)
+          & $msysPath -lc "pacman --noconfirm -Syuu" 2>&1 | Out-Host
+
+          # Второе обновление (на случай частичного обновления)
+          & $msysPath -lc "pacman --noconfirm -Syuu" 2>&1 | Out-Host
+
+          # Установка зависимостей
+          & $msysPath -lc "pacman --needed --noconfirm -S mingw-w64-x86_64-gtk4 mingw-w64-x86_64-pkg-config mingw-w64-x86_64-cairo mingw-w64-x86_64-gobject-introspection mingw-w64-x86_64-toolchain" 2>&1 | Out-Host
+
+          # Добавление в PATH
+          $mingwPath = "C:\tools\msys64\mingw64\bin"
+          $env:PATH = "$mingwPath;$env:PATH"
+          echo "$mingwPath" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+          # Установка переменных окружения
+          echo "PKG_CONFIG_PATH=C:\tools\msys64\mingw64\lib\pkgconfig" >> $env:GITHUB_ENV
+          echo "GTK_LIB_DIR=C:\tools\msys64\mingw64\lib" >> $env:GITHUB_ENV
+          echo "GTK_INCLUDE_DIR=C:\tools\msys64\mingw64\include" >> $env:GITHUB_ENV
       - name: Add Windows target
         if: matrix.os == 'windows-latest'
         run: rustup target add x86_64-pc-windows-msvc
