@@ -22,7 +22,16 @@ jobs:
       # Linux-specific steps
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-24.04'
-        run: "sudo apt-get update\nsudo apt-get install -y \\\n  libgtk-4-dev \\\n  libgirepository1.0-dev \\\n  libcairo2-dev \\\n  libpango1.0-dev \\\n  build-essential \\\n  libadwaita-1-dev \\\n  pkg-config\n  \n"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-4-dev \
+            libgirepository1.0-dev \
+            libcairo2-dev \
+            libpango1.0-dev \
+            build-essential \
+            libadwaita-1-dev \
+            pkg-config
       # Windows-specific steps
       - name: Install Chocolatey (Windows)
         if: matrix.os == 'windows-latest'
