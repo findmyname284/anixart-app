@@ -5,23 +5,18 @@ on:
   pull_request:
     branches: [master]
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-24.04, windows-latest]
-    runs-on: ${{ matrix.os }}
+  linux-build:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
-      # Install Rust
+      # Установка Rust
       - name: Install Rust
-        shell: bash
-        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      - name: Add Rust to PATH
-        shell: bash
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      # Linux-specific steps
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - run: rustup default stable
+      # Установка зависимостей для Linux
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -31,67 +26,50 @@ jobs:
             libpango1.0-dev \
             build-essential \
             libadwaita-1-dev \
-            pkg-config
-      # Windows-specific steps
-      - name: Install Chocolatey (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          Set-ExecutionPolicy Bypass -Scope Process -Force
-          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-      - name: Install MSYS2 (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: choco install -y msys2
-      - name: Install GTK dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          # Используем явный путь к MSYS2 bash
-          $msysPath = "C:\tools\msys64\usr\bin\bash.exe"
-
-          # Первое обновление (может потребовать перезапуска)
-          & $msysPath -lc "pacman --noconfirm -Syuu" 2>&1 | Out-Host
-
-          # Второе обновление (на случай частичного обновления)
-          & $msysPath -lc "pacman --noconfirm -Syuu" 2>&1 | Out-Host
-
-          # Установка зависимостей
-          & $msysPath -lc "pacman --needed --noconfirm -S mingw-w64-x86_64-gtk4 mingw-w64-x86_64-pkg-config mingw-w64-x86_64-cairo mingw-w64-x86_64-gobject-introspection mingw-w64-x86_64-toolchain" 2>&1 | Out-Host
-
-          # Добавление в PATH
-          $mingwPath = "C:\tools\msys64\mingw64\bin"
-          $env:PATH = "$mingwPath;$env:PATH"
-          echo "$mingwPath" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-
-          # Установка переменных окружения
-          echo "PKG_CONFIG_PATH=C:\tools\msys64\mingw64\lib\pkgconfig" >> $env:GITHUB_ENV
-          echo "GTK_LIB_DIR=C:\tools\msys64\mingw64\lib" >> $env:GITHUB_ENV
-          echo "GTK_INCLUDE_DIR=C:\tools\msys64\mingw64\include" >> $env:GITHUB_ENV
-      - name: Add Windows target
-        if: matrix.os == 'windows-latest'
-        run: rustup target add x86_64-pc-windows-msvc
-      # Build project
+            pkg-config \
+            libssl-dev
+      # Сборка проекта
       - name: Build project
-        env:
-          PKG_CONFIG_ALLOW_CROSS: 1
-          RUSTFLAGS: -C target-feature=+crt-static
-        run: |
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cargo build --release --target x86_64-pc-windows-msvc
-          else
-            cargo build --release
-          fi
-      # Upload artifacts
-      - name: Upload Linux artifact
-        if: matrix.os == 'ubuntu-24.04'
+        run: cargo build --release
+      # Загрузка артефакта
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: anixart-app-linux
           path: target/release/anixart-app
-      - name: Upload Windows artifact
-        if: matrix.os == 'windows-latest'
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      # Установка Rust
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$USERPROFILE\.cargo\bin" >> $env:GITHUB_PATH
+      - run: rustup default stable
+      - run: rustup target add x86_64-pc-windows-msvc
+      # Установка предварительно собранного GTK
+      - name: Download GTK runtime
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/2023-05-20/gtk-runtime-4.10.0-1-x64.exe" -OutFile gtk-runtime.exe
+          Start-Process -Wait -FilePath .\gtk-runtime.exe -ArgumentList "/S", "/D=C:\gtk"
+          echo "C:\gtk\bin" >> $env:GITHUB_PATH
+          echo "PKG_CONFIG_PATH=C:\gtk\lib\pkgconfig" >> $env:GITHUB_ENV
+          echo "GTK_LIB_DIR=C:\gtk\lib" >> $env:GITHUB_ENV
+          echo "GTK_INCLUDE_DIR=C:\gtk\include" >> $env:GITHUB_ENV
+      # Установка pkg-config
+      - name: Install pkg-config
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/pkg-config/pkg-config/releases/download/internal-0.7.1/pkg-config-0.7.1.zip" -OutFile pkg-config.zip
+          Expand-Archive -Path pkg-config.zip -DestinationPath .
+          echo "$pwd\pkg-config\bin" >> $env:GITHUB_PATH
+      # Сборка проекта для Windows
+      - name: Build project
+        run: cargo build --release --target x86_64-pc-windows-msvc
+      # Загрузка артефакта
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: anixart-app-windows.exe
