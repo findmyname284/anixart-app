@@ -3,7 +3,7 @@
     <requires lib="gtk" version="4.18" />
     <requires lib="libadwaita" version="1.0" />
 
-    <object class="AdwApplicationWindow" id="login_window">
+    <object class="GtkApplicationWindow" id="login_window">
         <property name="title">Anixart - Вход</property>
         <property name="default-width">300</property>
         <property name="default-height">400</property>
@@ -33,14 +33,18 @@
                 </child>
 
                 <child>
-                    <object class="AdwEntryRow" id="username_row">
-                        <property name="title">Имя пользователя</property>
+                    <object class="GtkEntry" id="username_row">
+                        <property name="placeholder-text">Имя пользователя</property>
+                        <property name="primary-icon-name">avatar-default-symbolic</property>
                     </object>
                 </child>
 
                 <child>
-                    <object class="AdwPasswordEntryRow" id="password_row">
-                        <property name="title">Пароль</property>
+                    <object class="GtkEntry" id="password_row">
+                        <property name="placeholder-text">Пароль</property>
+                        <property name="visibility">False</property>
+                        <property name="primary-icon-name">dialog-password-symbolic</property>
+                        <property name="input-purpose">password</property>
                     </object>
                 </child>
 

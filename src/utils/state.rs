@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 const STATE_FILE: &str = "app.json";
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct AppState {
     pub token: Option<String>,
     pub first_run: bool,
@@ -37,10 +37,20 @@ impl AppState {
         let json = serde_json::to_string_pretty(self).expect("Failed to serialize state");
         fs::write(path, json).expect("Failed to write state file");
     }
+
+    pub fn update_token(&mut self, token: String) {
+        self.token = Some(token);
+        self.first_run = false;
+        self.save();
+    }
+    
+    pub fn skip_login(&mut self) {
+        self.token = None;
+        self.first_run = false;
+        self.save();
+    }
 }
 
 fn get_state_path() -> PathBuf {
-    // Лучше использовать директорию данных приложения
-    // Для простоты примера - текущая директория
     PathBuf::from(STATE_FILE)
 }

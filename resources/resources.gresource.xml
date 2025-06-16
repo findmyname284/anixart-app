@@ -2,8 +2,9 @@
 <gresources>
     <gresource prefix="/kz/findmyname284/anixartd">
         <file>img/logo_light.png</file>
-        <file preprocess="xml-stripblanks">ui/login_window.ui</file>
-        <file preprocess="xml-stripblanks">ui/main_window.ui</file>
+        <file>ui/login_window.ui</file>
+        <file>ui/main_window.ui</file>
+        <file>ui/home_page.ui</file>
         <file>img/logo_dark.png</file>
     </gresource>
 </gresources>
