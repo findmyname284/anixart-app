@@ -43,77 +43,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install GTK (MSYS2)
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: mingw-w64-x86_64-gtk4 mingw-w64-x86_64-rust
+
       # Установка Rust
-      - name: Install Rust
-        shell: bash
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-gnu
 
       # Установка MSYS2 через Chocolatey
-      - name: Install Chocolatey
-        shell: powershell
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-gnu
+
+      - name: Build
+        shell: msys2 {0}
+        run: cargo build --release
+
+      - name: Fix DLL dependencies
         run: |
-          Set-ExecutionPolicy Bypass -Scope Process -Force
-          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-          
-      - name: Install MSYS2
-        shell: powershell
-        run: choco install -y msys2
+          cp "C:/msys64/mingw64/bin/"*.dll target/release/
+          cp "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" target/release/
 
-      # Установка GTK4 и зависимостей
-      - name: Install GTK dependencies
-        shell: powershell
-        run: |
-          # Определяем путь к MSYS2
-          $msysPath = if (Test-Path "C:\tools\msys64\usr\bin\bash.exe") {
-            "C:\tools\msys64\usr\bin\bash.exe"
-          } elseif (Test-Path "C:\ProgramData\chocolatey\lib\msys2\tools\msys64\usr\bin\bash.exe") {
-            "C:\ProgramData\chocolatey\lib\msys2\tools\msys64\usr\bin\bash.exe"
-          } else {
-            "C:\msys64\usr\bin\bash.exe"
-          }
-          
-          # Обновление пакетов
-          & $msysPath -lc "pacman --noconfirm -Syuu" 2>&1 | Out-Host
-          & $msysPath -lc "pacman --noconfirm -Syuu" 2>&1 | Out-Host
-          
-          # Установка зависимостей GTK4 без pkg-config
-          & $msysPath -lc "pacman --needed --noconfirm -S mingw-w64-x86_64-gtk4 mingw-w64-x86_64-cairo mingw-w64-x86_64-gobject-introspection mingw-w64-x86_64-toolchain" 2>&1 | Out-Host
-          
-          # Установка pkgconf отдельно (если нужно)
-          & $msysPath -lc "pacman --needed --noconfirm -S mingw-w64-x86_64-pkgconf" 2>&1 | Out-Host
-          
-          # Добавляем пути в окружение
-          $mingwPath = if (Test-Path "C:\tools\msys64\mingw64\bin") {
-            "C:\tools\msys64\mingw64\bin"
-          } elseif (Test-Path "C:\ProgramData\chocolatey\lib\msys2\tools\msys64\mingw64\bin") {
-            "C:\ProgramData\chocolatey\lib\msys2\tools\msys64\mingw64\bin"
-          } else {
-            "C:\msys64\mingw64\bin"
-          }
-          
-          echo "Mingw path: $mingwPath"
-          echo "$mingwPath" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-          echo "PKG_CONFIG_PATH=$mingwPath\..\lib\pkgconfig" >> $env:GITHUB_ENV
-          echo "GTK_LIB_DIR=$mingwPath\..\lib" >> $env:GITHUB_ENV
-          echo "GTK_INCLUDE_DIR=$mingwPath\..\include" >> $env:GITHUB_ENV
-
-      # Настройка Rust для Windows
-      - name: Add Windows target
-        run: rustup target add x86_64-pc-windows-msvc
-
-      # Сборка проекта
-      - name: Build project
-        env:
-          PKG_CONFIG_ALLOW_CROSS: 1
-          RUSTFLAGS: -C target-feature=+crt-static
-        run: cargo build --release --target x86_64-pc-windows-msvc
-
-      # Загрузка артефактов
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
           name: windows-app
-          path: target/x86_64-pc-windows-msvc/release/*.exe
+          path: target/release/anixart-app.exe
