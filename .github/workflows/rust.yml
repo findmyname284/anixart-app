@@ -1,0 +1,30 @@
+name: Rust CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      # Шаг 1: Загрузите репозиторий
+      - uses: actions/checkout@v3
+      # Шаг 2: Установите Rust
+      - name: Install Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      # Шаг 3: Добавьте Rust в PATH
+      - name: Add Rust to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      # Шаг 4: Установите GTK4
+      - name: Install GTK4
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev
+      # Шаг 5: Соберите проект
+      - name: Build
+        run: cargo build --release
+      # Шаг 6: Загрузите собранные файлы как артефакты
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binary-anixart-app
+          path: target/release/anixart-app
