@@ -12,75 +12,59 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      
-      # Install Rust (common for all OS)
+      # Install Rust
       - name: Install Rust
         shell: bash
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Add Rust to PATH
         shell: bash
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        
       # Linux-specific steps
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-24.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-4-dev \
-            libgirepository1.0-dev \
-            libcairo2-dev \
-            libpango1.0-dev \
-            build-essential \
-            libadwaita-1-dev \
-            pkg-config
-            
+        run: "sudo apt-get update\nsudo apt-get install -y \\\n  libgtk-4-dev \\\n  libgirepository1.0-dev \\\n  libcairo2-dev \\\n  libpango1.0-dev \\\n  build-essential \\\n  libadwaita-1-dev \\\n  pkg-config\n  \n"
       # Windows-specific steps
-      - name: Install Python (Windows)
+      - name: Install Chocolatey (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-          
-      - name: Install build tools (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: cmd
+        shell: powershell
         run: |
-          choco install -y pkgconfiglite
-          set PKG_CONFIG_PATH=C:\gtk-build\gtk\x64\release\lib\pkgconfig
-          echo "PKG_CONFIG_PATH=%PKG_CONFIG_PATH%" >> %GITHUB_ENV%
-          
-      - name: Install gvsbuild and build GTK (Windows)
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      - name: Install MSYS2 and dependencies (Windows)
         if: matrix.os == 'windows-latest'
-        shell: cmd
+        shell: powershell
         run: |
-          pip install gvsbuild
-          gvsbuild build --vs-ver 17 --enable-gi gtk4
-          
-      - name: Setup GTK environment (Windows)
+          choco install -y msys2
+          # Обновляем окружение PATH для текущей сессии
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+      - name: Install GTK with MSYS2 (Windows)
         if: matrix.os == 'windows-latest'
-        shell: cmd
+        shell: msys2 {0}
         run: |
-          echo "C:\gtk-build\gtk\x64\release\bin" >> %GITHUB_PATH%
-          echo "GTK_LIB_DIR=C:\gtk-build\gtk\x64\release\lib" >> %GITHUB_ENV%
-          echo "GTK_INCLUDE_DIR=C:\gtk-build\gtk\x64\release\include" >> %GITHUB_ENV%
-          echo "RUSTFLAGS=-C target-feature=+crt-static" >> %GITHUB_ENV%
-          
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm \
+            mingw-w64-x86_64-gtk4 \
+            mingw-w64-x86_64-pkg-config \
+            mingw-w64-x86_64-cairo \
+            mingw-w64-x86_64-gobject-introspection \
+            mingw-w64-x86_64-toolchain
+          echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=C:/msys64/mingw64/lib/pkgconfig" >> $GITHUB_ENV
       - name: Add Windows target
         if: matrix.os == 'windows-latest'
         run: rustup target add x86_64-pc-windows-msvc
-        
       # Build project
       - name: Build project
         env:
           PKG_CONFIG_ALLOW_CROSS: 1
+          RUSTFLAGS: -C target-feature=+crt-static
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             cargo build --release --target x86_64-pc-windows-msvc
           else
             cargo build --release
           fi
-          
       # Upload artifacts
       - name: Upload Linux artifact
         if: matrix.os == 'ubuntu-24.04'
@@ -88,7 +72,6 @@ jobs:
         with:
           name: anixart-app-linux
           path: target/release/anixart-app
-          
       - name: Upload Windows artifact
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
