@@ -66,7 +66,7 @@ jobs:
           mkdir -p dll_list
 
           # Ищем все DLL в системе и сохраняем список
-          find / -name '*.dll' > dll_list/all_dlls.txt
+          find /c/msys64/mingw64/bin -name '*.dll' > dll_list/all_dlls.txt
 
           target_dir="${{ github.workspace }}/target/release/"
           mkdir -p "$target_dir"
