@@ -33,45 +33,32 @@ jobs:
         run: cargo build --release
       # Загрузка артефакта
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: anixart-app-linux
           path: target/release/anixart-app
-  windows-build:
+  build-windows:
     runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Install GTK (MSYS2)
         uses: msys2/setup-msys2@v2
         with:
           update: true
           install: mingw-w64-x86_64-gtk4 mingw-w64-x86_64-rust
-
-      # Установка Rust
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           target: x86_64-pc-windows-gnu
-
-      # Установка MSYS2 через Chocolatey
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          target: x86_64-pc-windows-gnu
-
       - name: Build
         shell: msys2 {0}
         run: cargo build --release
-
       - name: Fix DLL dependencies
         run: |
           cp "C:/msys64/mingw64/bin/"*.dll target/release/
           cp "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" target/release/
-
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
