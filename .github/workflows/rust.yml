@@ -62,7 +62,6 @@ jobs:
         $sourceDir = "C:/msys64/mingw64/bin/"
         $destDir = "${{ github.workspace }}/target/release/"
         Copy-Item -Path "$sourceDir*.dll" -Destination $destDir -Force
-        Copy-Item -Path "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" -Destination $destDir -Force
   
     - name: Upload artifact
       uses: actions/upload-artifact@v4
