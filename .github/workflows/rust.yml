@@ -6,18 +6,22 @@ on:
     branches: [master]
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      # Шаг 1: Загрузите репозиторий
       - uses: actions/checkout@v3
-      # Шаг 2: Установите Rust
+      # Установка Rust (общая для всех ОС)
       - name: Install Rust
+        shell: bash
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      # Шаг 3: Добавьте Rust в PATH
       - name: Add Rust to PATH
+        shell: bash
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      # Шаг 4: Установите GTK4
-      - name: Install GTK4
+      # Linux-specific steps
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -27,12 +31,49 @@ jobs:
             libpango1.0-dev \
             build-essential \
             libadwaita-1-dev
-      # Шаг 5: Соберите проект
-      - name: Build
-        run: cargo build --release
-      # Шаг 6: Загрузите собранные файлы как артефакты
-      - name: Upload artifact
+      # Windows-specific steps (gvsbuild)
+      - name: Install Python (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install gvsbuild and build GTK (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          pip install gvsbuild
+          gvsbuild build --vs-version 17 --enable-gi --py wheel gtk4
+      - name: Add GTK to PATH (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          setx PATH "%PATH%;C:\gtk-build\gtk\x64\release\bin"
+          echo "GTK_LIB_DIR=C:\gtk-build\gtk\x64\release\lib" >> %GITHUB_ENV%
+          echo "GTK_INCLUDE_DIR=C:\gtk-build\gtk\x64\release\include" >> %GITHUB_ENV%
+      - name: Add Windows target
+        if: matrix.os == 'windows-latest'
+        run: rustup target add x86_64-pc-windows-msvc
+      # Сборка проекта
+      - name: Build project
+        env:
+          GTK_LIB_DIR: ${{ env.GTK_LIB_DIR }}
+          GTK_INCLUDE_DIR: ${{ env.GTK_INCLUDE_DIR }}
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cargo build --release --target x86_64-pc-windows-msvc
+          else
+            cargo build --release
+          fi
+      # Загрузка артефактов
+      - name: Upload Linux artifact
+        if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
         with:
-          name: release-binary-anixart-app
+          name: anixart-app-linux
           path: target/release/anixart-app
+      - name: Upload Windows artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: anixart-app-windows.exe
+          path: target/x86_64-pc-windows-msvc/release/anixart-app.exe
