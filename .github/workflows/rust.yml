@@ -33,13 +33,14 @@ jobs:
         with:
           name: anixart-app-linux
           path: target/release/anixart-app
+   
   build-windows:
     runs-on: windows-latest
-  
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-  
+
     - name: Setup MSYS2 and install dependencies
       uses: msys2/setup-msys2@v2
       with:
@@ -54,14 +55,17 @@ jobs:
     - name: Build (inside MSYS2)
       shell: msys2 {0}
       run: cargo build --release
-  
+
     - name: Fix DLL dependencies
+      shell: powershell
       run: |
-        cp "C:/msys64/mingw64/bin/"*.dll target/release/
-        cp "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" target/release/
+        $sourceDir = "C:/msys64/mingw64/bin/"
+        $destDir = "${{ github.workspace }}/target/release/"
+        Copy-Item -Path "$sourceDir*.dll" -Destination $destDir -Force
+        Copy-Item -Path "C:/msys64/mingw64/bin/gspawn-win64-helper.exe" -Destination $destDir -Force
   
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-app
-        path: target/release/*.exe
+        path: ${{ github.workspace }}/target/release/
