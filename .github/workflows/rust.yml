@@ -33,38 +33,57 @@ jobs:
         with:
           name: anixart-app-linux
           path: target/release/anixart-app
-   
   build-windows:
     runs-on: windows-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup MSYS2 and install dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: |
+            mingw-w64-x86_64-gtk4
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-rust
+            mingw-w64-x86_64-libadwaita
+      - name: Build (inside MSYS2)
+        shell: msys2 {0}
+        run: cargo build --release
+      - name: Fix DLL dependencies
+        shell: powershell
+        run: |
+          $sourceDir = "C:/msys64/mingw64/bin/"
+          $destDir = "${{ github.workspace }}/target/release/"
+          Copy-Item -Path "$sourceDir*.dll" -Destination $destDir -Force
+          ls "$sourceDir"
+      - name: Find and copy all DLL dependencies
+        shell: msys2 {0}
+        run: |
+          pacman -S --noconfirm findutils
 
-    - name: Setup MSYS2 and install dependencies
-      uses: msys2/setup-msys2@v2
-      with:
-        update: true
-        install: |
-          mingw-w64-x86_64-gtk4
-          mingw-w64-x86_64-pkgconf
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-rust
-          mingw-w64-x86_64-libadwaita
-  
-    - name: Build (inside MSYS2)
-      shell: msys2 {0}
-      run: cargo build --release
+          mkdir -p dll_list
 
-    - name: Fix DLL dependencies
-      shell: powershell
-      run: |
-        $sourceDir = "C:/msys64/mingw64/bin/"
-        $destDir = "${{ github.workspace }}/target/release/"
-        Copy-Item -Path "$sourceDir*.dll" -Destination $destDir -Force
-  
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-app
-        path: ${{ github.workspace }}/target/release/
+          # Ищем все DLL в системе и сохраняем список
+          find / -name '*.dll' > dll_list/all_dlls.txt
+
+          target_dir="${{ github.workspace }}/target/release/"
+          mkdir -p "$target_dir"
+
+          while IFS= read -r dll_file
+          do
+            echo "Copying $dll_file to $target_dir"
+            cp -v "$dll_file" "$target_dir"
+          done < dll_list/all_dlls.txt
+
+          echo "Copied DLL files:"
+          ls -lh "$target_dir" | grep '\.dll'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: 
+            ${{ github.workspace }}/target/release/*.exe
+            ${{ github.workspace }}/target/release/*.dll
