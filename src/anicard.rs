@@ -1,5 +1,6 @@
-use gtk::glib;
+use crate::utils::image_download::*;
 use gtk::subclass::prelude::*;
+use gtk::{Label, Image, glib};
 
 glib::wrapper! {
     pub struct AnimeCard(ObjectSubclass<imp::AnimeCardImp>)
@@ -15,13 +16,11 @@ mod imp {
     #[template(file = "anicard.ui")]
     pub struct AnimeCardImp {
         #[template_child]
-        pub title: TemplateChild<gtk::Label>,
+        pub image: TemplateChild<Image>,
         #[template_child]
-        pub subtitle: TemplateChild<gtk::Label>,
+        pub title: TemplateChild<Label>,
         #[template_child]
-        pub info: TemplateChild<gtk::Label>,
-        #[template_child]
-        pub description: TemplateChild<gtk::Label>,
+        pub description: TemplateChild<Label>,
     }
 
     #[glib::object_subclass]
@@ -50,28 +49,17 @@ mod imp {
 }
 
 impl AnimeCard {
-    pub fn new(
-        title: &str,
-        subtitle: &str,
-        info: &str,
-        description: &str,
-    ) -> Self {
+    pub fn new(image: &str, title: &str, description: &str) -> Self {
         let obj: Self = glib::Object::new::<Self>();
-        obj.set_properties(title, subtitle, info, description);
+        obj.set_properties(image, title, description);
         obj
     }
 
-    pub fn set_properties(
-        &self,
-        title: &str,
-        subtitle: &str,
-        info: &str,
-        description: &str,
-    ) {
+    pub fn set_properties(&self, image: &str, title: &str, description: &str) {
         let imp = self.imp();
+        
+        load_image(&imp.image, image);
         imp.title.set_text(title);
-        imp.subtitle.set_text(subtitle);
-        imp.info.set_text(info);
         imp.description.set_text(description);
     }
 }

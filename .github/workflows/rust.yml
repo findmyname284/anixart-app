@@ -54,36 +54,34 @@ jobs:
       - name: Fix DLL dependencies
         shell: powershell
         run: |
-          $sourceDir = "C:/msys64/mingw64/bin/"
-          $destDir = "${{ github.workspace }}/target/release/"
-          Copy-Item -Path "$sourceDir*.dll" -Destination $destDir -Force
-          ls "$sourceDir"
-      - name: Find and copy all DLL dependencies
-        shell: msys2 {0}
-        run: |
-          pacman -S --noconfirm findutils
+          $sourceDir = "C:\msys64\ucrt64\bin\"
 
-          mkdir -p dll_list
+          if (-not (Test-Path $sourceDir)) {
+              Write-Host "ERROR: Source directory $sourceDir does not exist!"
+              Get-ChildItem C:\msys64
+              exit 1
+          }
 
-          # Ищем все DLL в системе и сохраняем список
-          find /c/msys64/mingw64/bin -name '*.dll' > dll_list/all_dlls.txt
+          $destDir = "${{ github.workspace }}\target\release\"
 
-          target_dir="${{ github.workspace }}/target/release/"
-          mkdir -p "$target_dir"
+          if (-not (Test-Path $destDir)) {
+              New-Item -ItemType Directory -Path $destDir -Force
+          }
 
-          while IFS= read -r dll_file
-          do
-            echo "Copying $dll_file to $target_dir"
-            cp -v "$dll_file" "$target_dir"
-          done < dll_list/all_dlls.txt
+          Write-Host "Copying DLLs from $sourceDir to $destDir"
 
-          echo "Copied DLL files:"
-          ls -lh "$target_dir" | grep '\.dll'
+          $dlls = Get-ChildItem -Path $sourceDir -Filter *.dll
+          if ($dlls.Count -eq 0) {
+              Write-Host "WARNING: No DLLs found in $sourceDir"
+          } else {
+              $dlls | Copy-Item -Destination $destDir -Force
+              Write-Host "Copied $($dlls.Count) DLL files"
+          }
 
+          Write-Host "Copied files:"
+          Get-ChildItem -Path $destDir -Filter *.dll | Select-Object Name
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-app
-          path: 
-            ${{ github.workspace }}/target/release/*.exe
-            ${{ github.workspace }}/target/release/*.dll
+          path: ${{ github.workspace }}/target/release/*.exe ${{ github.workspace }}/target/release/*.dll

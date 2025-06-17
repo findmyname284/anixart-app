@@ -5,8 +5,9 @@
 
     <object class="AdwApplicationWindow" id="main_window">
         <property name="title">Главное окно</property>
-        <property name="default-width">400</property>
-        <property name="default-height">600</property>
+        <property name="default-width">500</property>
+        <property name="default-height">800</property>
+        <property name="resizable">false</property>
 
         <child>
             <object class="GtkBox" id="main_box">
@@ -33,11 +34,11 @@
                                 <property name="title">Обзор</property>
                                 <property name="icon-name">compass-symbolic</property>
                                 <property name="child">
-                                    <object class="GtkLabel">
+                                    <!-- <object class="GtkLabel">
                                         <property name="label">Обзор!</property>
                                         <property name="margin-top">20</property>
                                         <property name="halign">center</property>
-                                    </object>
+                                    </object> -->
                                 </property>
                             </object>
                         </child>
@@ -48,11 +49,11 @@
                                 <property name="title">Закладки</property>
                                 <property name="icon-name">bookmarks-symbolic</property>
                                 <property name="child">
-                                    <object class="GtkLabel">
+                                    <!-- <object class="GtkLabel">
                                         <property name="label">Закладки!</property>
                                         <property name="margin-top">20</property>
                                         <property name="halign">center</property>
-                                    </object>
+                                    </object> -->
                                 </property>
                             </object>
                         </child>
@@ -63,11 +64,11 @@
                                 <property name="title">Лента</property>
                                 <property name="icon-name">window-symbolic</property>
                                 <property name="child">
-                                    <object class="GtkLabel">
+                                    <!-- <object class="GtkLabel">
                                         <property name="label">Лента!</property>
                                         <property name="margin-top">20</property>
                                         <property name="halign">center</property>
-                                    </object>
+                                    </object> -->
                                 </property>
                             </object>
                         </child>
@@ -78,11 +79,11 @@
                                 <property name="title">Профиль</property>
                                 <property name="icon-name">user-symbolic</property>
                                 <property name="child">
-                                    <object class="GtkLabel">
+                                    <!-- <object class="GtkLabel">
                                         <property name="label">Профиль пользователя</property>
                                         <property name="margin-top">20</property>
                                         <property name="halign">center</property>
-                                    </object>
+                                    </object> -->
                                 </property>
                             </object>
                         </child>

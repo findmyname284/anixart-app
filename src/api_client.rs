@@ -1,7 +1,11 @@
+use std::time::Duration;
+
 use reqwest::{Proxy, header};
 use serde::Serialize;
 use serde_json::Value;
 use urlencoding::encode;
+
+use crate::utils::config::Config;
 
 const USER_AGENT: &str = "AnixartApp/9.0 BETA 3-25021818 (Android 11; SDK 30; x86_64; Waydroid WayDroid x86_64 Device; en)";
 
@@ -28,7 +32,7 @@ struct FilterRequest {
 }
 
 pub struct AnixartClient {
-    client: reqwest::Client,
+    pub client: reqwest::Client,
 }
 
 impl AnixartClient {
@@ -36,11 +40,24 @@ impl AnixartClient {
         let mut headers = header::HeaderMap::new();
         headers.insert("Connection", header::HeaderValue::from_static("keep-alive"));
 
-        let client = reqwest::Client::builder()
+        let mut client_builder = reqwest::Client::builder();
+        
+        let config = Config::load();
+
+        let proxy_option = config.proxy;
+        if let Some(proxy) = proxy_option {
+            if !proxy.is_empty() {
+                let proxy = Proxy::all(&proxy)
+                    .expect("Failed to create proxy");
+                client_builder = client_builder.proxy(proxy);
+            }
+        }
+
+        let client = client_builder
             .default_headers(headers)
             .user_agent(USER_AGENT)
             .danger_accept_invalid_certs(true)
-            .proxy(Proxy::https("http://66.201.7.151:3128").expect("Failed to create proxy"))
+            .timeout(Duration::from_secs(15))
             .build()
             .expect("Failed to create HTTP client");
 
@@ -71,11 +88,7 @@ impl AnixartClient {
         Ok(auth_response)
     }
 
-    pub async fn apply_filter(
-        &self,
-        token: &str,
-    ) -> Result<Value, reqwest::Error> {
-        // Создаем тело запроса
+    pub async fn apply_filter(&self, token: &str) -> Result<Value, reqwest::Error> {
         let body = FilterRequest {
             country: None,
             season: None,
@@ -96,33 +109,26 @@ impl AnixartClient {
             types: vec![],
         };
 
-        // Формируем URL с параметрами
         let url = format!(
             "https://api.anixart.tv/filter/0?extended_mode=true&token={}",
             token
         );
 
-        // Отправляем запрос
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Host", "api.anixart.tv")
-            .header("Accept-Encoding", "gzip, deflate, br")
             .json(&body)
             .send()
             .await?;
 
-        // Обрабатываем ответ
         response.error_for_status_ref()?;
         let response_data = response.json::<Value>().await?;
         Ok(response_data)
     }
 
     pub async fn get_ip(&self) -> Result<Value, reqwest::Error> {
-        let response = self
-            .client
-            .get("https://api.ipify.org?format=json")
-            .send()
-            .await?;
+        let response = self.client.get("https://httpbin.org/ip").send().await?;
 
         response.error_for_status_ref()?;
 
