@@ -10,7 +10,7 @@ const CONFIG_FILE: &str = "config.toml";
 pub(crate) struct Config {
     pub token: Option<String>,
     pub first_run: bool,
-    pub proxy: Option<String>
+    pub proxy: Option<String>,
 }
 
 impl Default for Config {
@@ -18,7 +18,7 @@ impl Default for Config {
         Config {
             token: Some(String::new()),
             first_run: true,
-            proxy: Some(String::new())
+            proxy: Some(String::new()),
         }
     }
 }

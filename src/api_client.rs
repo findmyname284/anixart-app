@@ -1,6 +1,5 @@
-use std::time::Duration;
-
-use reqwest::{Proxy, header};
+use once_cell::sync::Lazy;
+use reqwest::{Client, Proxy};
 use serde::Serialize;
 use serde_json::Value;
 use urlencoding::encode;
@@ -8,6 +7,35 @@ use urlencoding::encode;
 use crate::utils::config::Config;
 
 const USER_AGENT: &str = "AnixartApp/9.0 BETA 3-25021818 (Android 11; SDK 30; x86_64; Waydroid WayDroid x86_64 Device; en)";
+
+static HTTP_CLIENT: Lazy<AnixartClient> = Lazy::new(|| {
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert(
+        "Connection",
+        reqwest::header::HeaderValue::from_static("keep-alive"),
+    );
+
+    let config = Config::load();
+    let mut client_builder = Client::builder()
+        .default_headers(headers)
+        .user_agent(USER_AGENT)
+        .danger_accept_invalid_certs(true)
+        .timeout(std::time::Duration::from_secs(15));
+
+    if let Some(proxy) = config.proxy {
+        if !proxy.is_empty() {
+            if let Ok(proxy) = Proxy::all(&proxy) {
+                client_builder = client_builder.proxy(proxy);
+            }
+        }
+    }
+
+    let client = client_builder
+        .build()
+        .expect("Failed to create HTTP client");
+
+    AnixartClient { client }
+});
 
 #[derive(Serialize)]
 struct FilterRequest {
@@ -36,32 +64,8 @@ pub struct AnixartClient {
 }
 
 impl AnixartClient {
-    pub fn new() -> Self {
-        let mut headers = header::HeaderMap::new();
-        headers.insert("Connection", header::HeaderValue::from_static("keep-alive"));
-
-        let mut client_builder = reqwest::Client::builder();
-        
-        let config = Config::load();
-
-        let proxy_option = config.proxy;
-        if let Some(proxy) = proxy_option {
-            if !proxy.is_empty() {
-                let proxy = Proxy::all(&proxy)
-                    .expect("Failed to create proxy");
-                client_builder = client_builder.proxy(proxy);
-            }
-        }
-
-        let client = client_builder
-            .default_headers(headers)
-            .user_agent(USER_AGENT)
-            .danger_accept_invalid_certs(true)
-            .timeout(Duration::from_secs(15))
-            .build()
-            .expect("Failed to create HTTP client");
-
-        AnixartClient { client }
+    pub fn global() -> &'static Self {
+        &HTTP_CLIENT
     }
 
     pub async fn sign_in(
@@ -83,8 +87,6 @@ impl AnixartClient {
         response.error_for_status_ref()?;
 
         let auth_response = response.json::<Value>().await?;
-        // let auth_response = response.text().await?;
-        // println!("Response: {}", auth_response);
         Ok(auth_response)
     }
 

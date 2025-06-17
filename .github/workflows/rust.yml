@@ -80,8 +80,11 @@ jobs:
 
           Write-Host "Copied files:"
           Get-ChildItem -Path $destDir -Filter *.dll | Select-Object Name
+          Write-Host "Deleting files and directories in $destDir except *.exe and *.dll:"
+          Get-ChildItem -Path $destDir -Exclude *.exe,*.dll | Where-Object {!$_.PSIsContainer} | Remove-Item
+          Get-ChildItem -Path $destDir -Exclude *.exe,*.dll | Where-Object {$_.PSIsContainer} | Remove-Item -Recurse
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-app
-          path: ${{ github.workspace }}/target/release/*.exe ${{ github.workspace }}/target/release/*.dll
+          path: ${{ github.workspace }}/target/release/

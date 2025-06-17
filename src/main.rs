@@ -2,42 +2,24 @@ mod anicard;
 mod api_client;
 mod utils;
 
-use glib::clone;
 use gtk::Application;
 use gtk::prelude::*;
-use std::thread;
-use std::time::Duration;
 use std::{cell::RefCell, rc::Rc};
 use utils::{config::Config, ui::*};
 
-// use utils::image_download;
-
 async fn my_task() {
     println!("Requesting IP address...");
-    let client = api_client::AnixartClient::new();
+    let client = api_client::AnixartClient::global();
     if let Ok(ip) = client.get_ip().await {
         println!("IP address: {:#?}", ip);
     } else {
         println!("Error");
     }
-
-    // for _ in 0..12 {
-    //     // let _ = image_download::download_image_async(
-    //     //     "https://anixstatic.com/posters/qIkzXrQ9N3pQRupQJlDxSJHoquupWX.jpg",
-    //     // )
-    //     // .await;
-    //     let _ = anicard::AnimeCard::new("https://anixstatic.com/posters/9AJigmcT0KD9R7lVKohzzTk15o7FR0.jpg", "title", "description");
-    // }
 }
 
 #[tokio::main]
 async fn main() {
-    // let handle = tokio::task::spawn(my_task());
     tokio::spawn(my_task());
-
-    // handle.await.expect("Failed to join task");
-
-    glib::spawn_future_local(my_task());
 
     if gio::resources_register_include!("app.gresource").is_err() {
         eprintln!("Failed to register resources");
@@ -67,59 +49,65 @@ fn show_login_window(app: &Application, state: Rc<RefCell<Config>>) {
     let state_clone = state.clone();
     let window_clone = ui.window.clone();
     let app_clone = app.clone();
-    let ui_clone = ui.clone();
 
-    let (sender, receiver) = async_channel::bounded::<()>(1);
-    let receiver = Rc::new(receiver);
+    let restore_sensitivity = {
+        let login_button = ui.login_button.clone();
+        let skip_button = ui.skip_button.clone();
+        let username_entry = ui.username_entry.clone();
+        let password_entry = ui.password_entry.clone();
+        move || {
+            login_button.set_sensitive(true);
+            skip_button.set_sensitive(true);
+            username_entry.set_sensitive(true);
+            password_entry.set_sensitive(true);
+        }
+    };
+
     ui.login_button.connect_clicked({
-        let receiver = receiver.clone();
+        let username_entry = ui.username_entry.clone();
+        let password_entry = ui.password_entry.clone();
+        let login_button = ui.login_button.clone();
+        let skip_button = ui.skip_button.clone();
+
         move |_| {
             let state = state_clone.clone();
-            let username = ui_clone.username_entry.text().to_string();
-            let password = ui_clone.password_entry.text().to_string();
+            let username = username_entry.text().to_string();
+            let password = password_entry.text().to_string();
             let window_clone = window_clone.clone();
             let app_clone = app_clone.clone();
 
-            let client = api_client::AnixartClient::new();
+            login_button.set_sensitive(false);
+            skip_button.set_sensitive(false);
+            username_entry.set_sensitive(false);
+            password_entry.set_sensitive(false);
 
-            glib::spawn_future_local(clone!(
-                #[strong]
-                sender,
+            let client = api_client::AnixartClient::global();
+
+            glib::spawn_future_local({
+                let future_restore = restore_sensitivity.clone();
                 async move {
-                    let response = reqwest::get("https://www.gtk-rs.org").await;
-                    // sender
-                    //     .send(())
-                    //     .await
-                    //     .expect("The channel needs to be open.");
                     match client.sign_in(&username, &password).await {
                         Ok(auth_data) => {
-                            let token = auth_data["profileToken"]["token"]
+                            let token_opt = auth_data["profileToken"]["token"]
                                 .as_str()
-                                .unwrap_or("")
-                                .to_string();
-                            // println!("Token: {}", token);
-
-                            if token.is_empty() {
-                                eprintln!("Login failed: Token is empty");
-                                return;
+                                .filter(|s| !s.is_empty())
+                                .map(|s| s.to_string());
+                            if let Some(token) = token_opt {
+                                glib::idle_add_local_once(move || {
+                                    state.borrow_mut().update_token(token);
+                                    window_clone.close();
+                                    show_main_window(&app_clone, state);
+                                });
+                            } else {
+                                eprintln!("Login failed: Empty token");
+                                glib::idle_add_local_once(move || future_restore());
                             }
-
-                            glib::idle_add_local_once(move || {
-                                state.borrow_mut().update_token(token);
-                                window_clone.close();
-                                show_main_window(&app_clone, state);
-                            });
                         }
-                        Err(e) => eprintln!("Login failed: {}", e),
+                        Err(e) => {
+                            eprintln!("Login failed: {}", e);
+                            glib::idle_add_local_once(move || future_restore());
+                        }
                     }
-                }
-            ));
-
-            let receiver = receiver.clone();
-            glib::spawn_future_local(async move {
-                while let Ok(_response) = receiver.recv().await {
-                    println!("Received a signal from the channel.");
-                    // You can handle the received signal here if needed.
                 }
             });
         }
@@ -145,7 +133,9 @@ fn show_main_window(app: &Application, state: Rc<RefCell<Config>>) {
     }
 
     let cards_container = ui.cards_container.clone();
-    let client = api_client::AnixartClient::new();
+    let client = api_client::AnixartClient::global();
+
+    // let (sender, receiver) = async_channel::unbounded::<String>();
 
     // for _ in 0..12 {
     //     let card = anicard::AnimeCard::new("https://anixstatic.com/posters/9AJigmcT0KD9R7lVKohzzTk15o7FR0.jpg", "title", "description");
@@ -168,12 +158,8 @@ fn show_main_window(app: &Application, state: Rc<RefCell<Config>>) {
                         ) {
                             let cards_container_clone = cards_container.clone();
                             let card = anicard::AnimeCard::new(image, title, desc);
-                            // let five_seconds = Duration::from_secs(10);
-                            // thread::sleep(five_seconds);
-                            glib::idle_add_local(move || {
-                                cards_container_clone.append(&card);
-                                glib::ControlFlow::Break
-                            });
+                            cards_container_clone.append(&card);
+                            glib::idle_add_local(move || glib::ControlFlow::Break);
                         }
                     }
                 }

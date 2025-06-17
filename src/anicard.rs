@@ -1,6 +1,6 @@
-use crate::utils::image_download::*;
+use crate::utils::image::*;
 use gtk::subclass::prelude::*;
-use gtk::{Label, Image, glib};
+use gtk::{Image, Label, glib};
 
 glib::wrapper! {
     pub struct AnimeCard(ObjectSubclass<imp::AnimeCardImp>)
@@ -57,7 +57,7 @@ impl AnimeCard {
 
     pub fn set_properties(&self, image: &str, title: &str, description: &str) {
         let imp = self.imp();
-        
+
         load_image(&imp.image, image);
         imp.title.set_text(title);
         imp.description.set_text(description);
