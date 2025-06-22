@@ -5,6 +5,8 @@
         <file>ui/login_window.ui</file>
         <file>ui/main_window.ui</file>
         <file>ui/home_page.ui</file>
+        <file>ui/bookmarks_page.ui</file>
+        <file>ui/anicard.ui</file>
         <file>img/logo_dark.png</file>
     </gresource>
 </gresources>

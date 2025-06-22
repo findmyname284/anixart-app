@@ -8,17 +8,40 @@ const CONFIG_FILE: &str = "config.toml";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Config {
-    pub token: Option<String>,
     pub first_run: bool,
+    pub ui: UiConfig,
+    pub network: NetworkConfig,
+    pub auth: AuthConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct UiConfig {
+    pub is_dark_theme: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct NetworkConfig {
     pub proxy: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(crate) struct AuthConfig {
+    pub token: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            token: Some(String::new()),
             first_run: true,
-            proxy: Some(String::new()),
+            ui: UiConfig {
+                is_dark_theme: false,
+            },
+            network: NetworkConfig {
+                proxy: Some(String::new()),
+            },
+            auth: AuthConfig {
+                token: Some(String::new()),
+            },
         }
     }
 }
@@ -37,18 +60,18 @@ impl Config {
     pub fn save(&self) {
         println!("Saving config");
         let path = get_state_path();
-        let output = toml::to_string(self).unwrap();
+        let output = toml::to_string(&self).unwrap();
         fs::write(path, output).expect("Failed to write state file");
     }
 
     pub fn update_token(&mut self, token: String) {
-        self.token = Some(token);
+        self.auth.token = Some(token);
         self.first_run = false;
         self.save();
     }
 
     pub fn skip_login(&mut self) {
-        self.token = None;
+        self.auth.token = None;
         self.first_run = false;
         self.save();
     }

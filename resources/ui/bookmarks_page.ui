@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-    <object class="GtkBox" id="home_content">
+    <object class="GtkBox" id="bookmarks_content">
         <property name="orientation">vertical</property>
         <property name="vexpand">true</property>
 
@@ -27,7 +27,7 @@
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
-                            <object class="GtkBox" id="my_tab_cards_container">
+                            <object class="GtkBox" id="collections_tab_cards_container">
                                 <property name="orientation">vertical</property>
                                 <property name="spacing">16</property>
                             </object>
@@ -35,26 +35,8 @@
                     </object>
                 </child>
                 <child type="tab">
-                    <object class="GtkLabel" id="my-tab">
-                        <property name="label">Моя вкладка</property>
-                    </object>
-                </child>
-
-                <child>
-                    <object class="GtkScrolledWindow" id="latest_scrolled_window">
-                        <property name="vexpand">true</property>
-                        <property name="hexpand">true</property>
-                        <child>
-                            <object class="GtkBox" id="latest_tab_cards_container">
-                                <property name="orientation">vertical</property>
-                                <property name="spacing">16</property>
-                            </object>
-                        </child>
-                    </object>
-                </child>
-                <child type="tab">
-                    <object class="GtkLabel" id="latest-tab">
-                        <property name="label">Последнее</property>
+                    <object class="GtkLabel" id="collections-tab">
+                        <property name="label">Коллекции</property>
                     </object>
                 </child>
 
@@ -63,7 +45,7 @@
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
-                            <object class="GtkBox" id="ongoing_tab_cards_container">
+                            <object class="GtkBox" id="history_tab_cards_container">
                                 <property name="orientation">vertical</property>
                                 <property name="spacing">16</property>
                             </object>
@@ -71,8 +53,8 @@
                     </object>
                 </child>
                 <child type="tab">
-                    <object class="GtkLabel" id="ongoing-tab">
-                        <property name="label">Онгоинги</property>
+                    <object class="GtkLabel" id="history-tab">
+                        <property name="label">История</property>
                     </object>
                 </child>
 
@@ -81,7 +63,7 @@
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
-                            <object class="GtkBox" id="announce_tab_cards_container">
+                            <object class="GtkBox" id="favorite_tab_cards_container">
                                 <property name="orientation">vertical</property>
                                 <property name="spacing">16</property>
                             </object>
@@ -89,8 +71,8 @@
                     </object>
                 </child>
                 <child type="tab">
-                    <object class="GtkLabel" id="announce-tab">
-                        <property name="label">Анонс</property>
+                    <object class="GtkLabel" id="favorite-tab">
+                        <property name="label">Избранное</property>
                     </object>
                 </child>
 
@@ -99,7 +81,7 @@
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
-                            <object class="GtkBox" id="completed_tab_cards_container">
+                            <object class="GtkBox" id="watching_tab_cards_container">
                                 <property name="orientation">vertical</property>
                                 <property name="spacing">16</property>
                             </object>
@@ -107,8 +89,8 @@
                     </object>
                 </child>
                 <child type="tab">
-                    <object class="GtkLabel" id="completed-tab">
-                        <property name="label">Завершенные</property>
+                    <object class="GtkLabel" id="watching-tab">
+                        <property name="label">Смотрю</property>
                     </object>
                 </child>
 
@@ -117,7 +99,7 @@
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
-                            <object class="GtkBox" id="movies_tab_cards_container">
+                            <object class="GtkBox" id="plans_tab_cards_container">
                                 <property name="orientation">vertical</property>
                                 <property name="spacing">16</property>
                             </object>
@@ -125,8 +107,62 @@
                     </object>
                 </child>
                 <child type="tab">
-                    <object class="GtkLabel" id="movies-tab">
-                        <property name="label">Фильмы</property>
+                    <object class="GtkLabel" id="plans-tab">
+                        <property name="label">В планах</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkScrolledWindow">
+                        <property name="vexpand">true</property>
+                        <property name="hexpand">true</property>
+                        <child>
+                            <object class="GtkBox" id="viewed_tab_cards_container">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">16</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child type="tab">
+                    <object class="GtkLabel" id="viewed-tab">
+                        <property name="label">Просмотрено</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkScrolledWindow">
+                        <property name="vexpand">true</property>
+                        <property name="hexpand">true</property>
+                        <child>
+                            <object class="GtkBox" id="hold_tab_cards_container">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">16</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child type="tab">
+                    <object class="GtkLabel" id="hold-tab">
+                        <property name="label">Отложено</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkScrolledWindow">
+                        <property name="vexpand">true</property>
+                        <property name="hexpand">true</property>
+                        <child>
+                            <object class="GtkBox" id="dropped_tab_cards_container">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">16</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child type="tab">
+                    <object class="GtkLabel" id="dropped-tab">
+                        <property name="label">Брошено</property>
                     </object>
                 </child>
             </object>

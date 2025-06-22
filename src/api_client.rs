@@ -1,10 +1,12 @@
 use once_cell::sync::Lazy;
-use reqwest::{Client, Proxy};
+use reqwest::{
+    header::{HeaderMap, HeaderValue, CONNECTION, HOST, ORIGIN, REFERER}, Client, Proxy
+};
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 use urlencoding::encode;
 
-use crate::utils::config::Config;
+use crate::utils::{config::Config, filter};
 
 const USER_AGENT: &str = "AnixartApp/9.0 BETA 3-25021818 (Android 11; SDK 30; x86_64; Waydroid WayDroid x86_64 Device; en)";
 
@@ -22,7 +24,7 @@ static HTTP_CLIENT: Lazy<AnixartClient> = Lazy::new(|| {
         .danger_accept_invalid_certs(true)
         .timeout(std::time::Duration::from_secs(15));
 
-    if let Some(proxy) = config.proxy {
+    if let Some(proxy) = config.network.proxy {
         if !proxy.is_empty() {
             if let Ok(proxy) = Proxy::all(&proxy) {
                 client_builder = client_builder.proxy(proxy);
@@ -34,38 +36,50 @@ static HTTP_CLIENT: Lazy<AnixartClient> = Lazy::new(|| {
         .build()
         .expect("Failed to create HTTP client");
 
-    AnixartClient { client }
+    AnixartClient {
+        client,
+        base_url: String::from("https://api.anixart.tv"),
+        token: config.auth.token.unwrap_or(String::new()),
+    }
 });
-
-#[derive(Serialize)]
-struct FilterRequest {
-    country: Option<()>,
-    season: Option<()>,
-    sort: i32,
-    studio: Option<()>,
-    #[serde(rename = "age_ratings")]
-    age_ratings: Vec<()>,
-    category_id: Option<()>,
-    end_year: Option<()>,
-    episode_duration_from: Option<()>,
-    episode_duration_to: Option<()>,
-    episodes_from: Option<()>,
-    episodes_to: Option<()>,
-    genres: Vec<()>,
-    is_genres_exclude_mode_enabled: bool,
-    profile_list_exclusions: Vec<()>,
-    start_year: Option<()>,
-    status_id: Option<u8>,
-    types: Vec<()>,
-}
 
 pub struct AnixartClient {
     pub client: reqwest::Client,
+    pub base_url: String,
+    token: String,
 }
 
 impl AnixartClient {
     pub fn global() -> &'static Self {
         &HTTP_CLIENT
+    }
+
+    pub async fn sign_up(
+        &self,
+        login: &str,
+        email: &str,
+        password: &str,
+    ) -> Result<serde_json::Value, reqwest::Error> {
+        let body = format!(
+            "login={}&email={}&password={}",
+            encode(login),
+            encode(email),
+            encode(password)
+        );
+
+        let response = self
+            .client
+            .post(format!("{}/auth/signUp", self.base_url))
+            .header("Host", "api.anixart.tv")
+            .body(body)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let auth_response = response.json::<Value>().await?;
+        Ok(auth_response)
     }
 
     pub async fn sign_in(
@@ -90,37 +104,18 @@ impl AnixartClient {
         Ok(auth_response)
     }
 
-    pub async fn apply_filter(&self, token: &str) -> Result<Value, reqwest::Error> {
-        let body = FilterRequest {
-            country: None,
-            season: None,
-            sort: 0,
-            studio: None,
-            age_ratings: vec![],
-            category_id: None,
-            end_year: None,
-            episode_duration_from: None,
-            episode_duration_to: None,
-            episodes_from: None,
-            episodes_to: None,
-            genres: vec![],
-            is_genres_exclude_mode_enabled: false,
-            profile_list_exclusions: vec![],
-            start_year: None,
-            status_id: None,
-            types: vec![],
-        };
+    pub async fn filter(&self, filter: filter::FilterRequest, index: u32) -> Result<Value, reqwest::Error> {
 
         let url = format!(
-            "https://api.anixart.tv/filter/0?extended_mode=true&token={}",
-            token
+            "{}/filter/{}?extended_mode=true&token={}",
+            self.base_url, index, self.token
         );
 
         let response = self
             .client
             .post(&url)
             .header("Host", "api.anixart.tv")
-            .json(&body)
+            .json(&filter)
             .send()
             .await?;
 
@@ -128,6 +123,330 @@ impl AnixartClient {
         let response_data = response.json::<Value>().await?;
         Ok(response_data)
     }
+
+    pub async fn favorite(&self, index: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/favorite/all/{}?sort=1&filter_announce=0&token={}",
+                self.base_url, index, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let favorite_response = response.json::<Value>().await?;
+        Ok(favorite_response)
+    }
+
+    // https://api-alt.anixart.app/profile/list/all/1/0?sort=1&filter_announce=0&token=c9b442779655b81f2004c96f69d9943e065e338c # смотрю
+    // https://api-alt.anixart.app/profile/list/all/2/0?sort=1&filter_announce=0&token=c9b442779655b81f2004c96f69d9943e065e338c # в планах
+
+    pub async fn profile_list(&self, status_id: u32, index: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/profile/list/all/{}/{}?sort=1&filter_announce=0&token={}",
+                self.base_url, status_id, index, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let profile_response = response.json::<Value>().await?;
+        Ok(profile_response)
+    }
+
+    pub async fn history(&self, index: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/history/{}?token={}",
+                self.base_url, index, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let history_response = response.json::<Value>().await?;
+        Ok(history_response)
+    }
+
+    // https://api-alt.anixart.app/collectionFavorite/all/0?token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn collection_favorite(&self, index: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/collectionFavorite/all/{}?token={}",
+                self.base_url, index, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let collection_response = response.json::<Value>().await?;
+        Ok(collection_response)
+    }
+
+    // https://api-alt.anixart.app/profile/1816556?token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn profile(&self, id: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/profile/{}?token={}",
+                self.base_url, id, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let profile_response = response.json::<Value>().await?;
+        Ok(profile_response)
+    }
+
+    // https://api-alt.anixart.app/profile/preference/my?token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn profile_preference(&self) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/profile/preference/my?token={}",
+                self.base_url, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let preference_response = response.json::<Value>().await?;
+        Ok(preference_response)
+    }
+
+    // https://api-alt.anixart.app/search/releases/0?token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn search_releases(&self, index: u32, query: &str) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .post(format!(
+                "{}/search/releases/{}?token={}",
+                self.base_url, index, self.token
+            ))
+            .json(&json!({ "query": query, "searchBy": 0 }))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let search_response = response.json::<Value>().await?;
+        Ok(search_response)
+    }
+
+    // https://api-alt.anixart.app/search/profile/list/1/0?token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn search_profile_list(
+        &self,
+        status_id: u32,
+        index: u32,
+        query: &str,
+    ) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .post(format!(
+                "{}/search/profile/list/{}/{}?token={}",
+                self.base_url, status_id, index, self.token
+            ))
+            .json(&json!({ "query": query, "searchBy": 0 }))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let search_response = response.json::<Value>().await?;
+        Ok(search_response)
+    }
+
+    // https://api-alt.anixart.app/profile/login/history/all/1816556/0?token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn profile_login_history(
+        &self,
+        profile_id: u32,
+        index: u32,
+    ) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/profile/login/history/all/{}/{}?token={}",
+                self.base_url, profile_id, index, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let history_response = response.json::<Value>().await?;
+        Ok(history_response)
+    }
+
+    // https://api-alt.anixart.app/release/18909?extended_mode=true&token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn release(&self, id: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/release/{}?extended_mode=true&token={}",
+                self.base_url, id, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let release_response = response.json::<Value>().await?;
+        Ok(release_response)
+    }
+
+    // https://api-alt.anixart.app/release/streaming/platform/18909
+    pub async fn release_streaming_platform(&self, id: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/release/streaming/platform/{}?token={}",
+                self.base_url, id, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let platform_response = response.json::<Value>().await?;
+        Ok(platform_response)
+    }
+
+    // https://api-alt.anixart.app/episode/18909?token=c9b442779655b81f2004c96f69d9943e065e338c
+    pub async fn episode(&self, id: u32) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/episode/{}?token={}",
+                self.base_url, id, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let episode_response = response.json::<Value>().await?;
+        Ok(episode_response)
+    }
+
+    // https://api-alt.anixart.app/episode/18909/29
+    pub async fn episode_sources_by_type(
+        &self,
+        release_id: u32,
+        type_id: u32,
+    ) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/episode/{}/{}",
+                self.base_url, release_id, type_id
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let episode_response = response.json::<Value>().await?;
+        Ok(episode_response)
+    }
+
+    // https://api-alt.anixart.app/episode/18909/29/30?sort=1&token=
+    pub async fn episode_sources(
+        &self,
+        release_id: u32,
+        type_id: u32,
+        index: u32,
+    ) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/episode/{}/{}/{}?sort=1&token={}",
+                self.base_url, release_id, type_id, index, self.token
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let episode_response = response.json::<Value>().await?;
+        Ok(episode_response)
+    }
+
+    // https://api-alt.anixart.app/episode/target/18909/30/3
+    pub async fn episode_target(
+        &self,
+        release_id: u32,
+        type_id: u32,
+        episode: u32,
+    ) -> Result<Value, reqwest::Error> {
+        let response = self
+            .client
+            .get(format!(
+                "{}/episode/target/{}/{}/{}",
+                self.base_url, release_id, type_id, episode
+            ))
+            .send()
+            .await?;
+
+        response.error_for_status_ref()?;
+
+        let episode_response = response.json::<Value>().await?;
+        Ok(episode_response)
+    }
+
+    // https://kodik.biz/api/video-links?p=56a768d08f43091901c44b54fe970049&link=//kodik.info/seria/1447065/00e6639fa57b1f86b8c3bad55de978ed/720p&d=2025062113&s=18a85af08d061f0bc14b2d12cc6e25ce638ca8f09c42ed7b7a3be10f2898f85f&ip=162.158.163.73
+    // https://kodik.biz/api/video-links?p=56a768d08f43091901c44b54fe970049&link=//kodik.info/seria/1447065/00e6639fa57b1f86b8c3bad55de978ed/720p&d=2025062121&s=uZWc40aIqZ8F6FBIFTknx7pNgK7GALHheEtyXvv0r5tSx7yS7Kc6xPM3EZqmqcF3&ip=172.68.207.149
+    pub async fn kodik_video_links(&self, link: &str) -> Result<Value, reqwest::Error> {
+        let token = "56a768d08f43091901c44b54fe970049";
+        let url = format!("https://kodik.biz/api/video-links?p={}&link={}", token, link);
+
+        let response = self.client.get(&url).send().await?;
+
+        response.error_for_status_ref()?;
+
+        let video_links_response = response.json::<Value>().await?;
+        Ok(video_links_response)
+    }
+
+    // https://cloud.kodik-storage.com/useruploads/42a02815-596b-41c1-8db7-b0abdb3ecc65/58fc4da0d10feede0a53b6fe3907b3ff:2025062100/360.mp4:hls:manifest.m3u8
+    // pub async fn kodik_video_stream(&self, url: &str) -> Result<(), reqwest::Error> {
+    //     let mut headers = HeaderMap::new();
+    //     headers.insert(HOST, HeaderValue::from_static("cloud.kodik-storage.com"));
+    //     headers.insert(USER_AGENT, HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36"));
+    //     headers.insert("Accept-Encoding", HeaderValue::from_static("gzip, deflate, br"));
+    //     headers.insert("accept", HeaderValue::from_static("*/*"));
+    //     headers.insert(REFERER, HeaderValue::from_static("https://kodik.info/"));
+    //     headers.insert(ORIGIN, HeaderValue::from_static("https://kodik.info"));
+    //     headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
+    //     headers.insert("Content-Type", HeaderValue::from_static("text/html"));
+
+    //     let client = reqwest::Client::builder()
+    //         .danger_accept_invalid_certs(true)
+    //         .build()?;
+
+    //     let response = client.get(url).headers(headers).send().await?;
+
+    //     response.error_for_status_ref()?;
+
+    //     println!("Status: {}", response.status());
+    //     println!("Headers:\n{:#?}", response.headers());
+
+    //     // Читаем тело ответа как текст
+    //     let body = response.text().await?;
+    //     println!("Body:\n{}", body);
+
+    //     Ok(())
+    // }
 
     pub async fn get_ip(&self) -> Result<Value, reqwest::Error> {
         let response = self.client.get("https://httpbin.org/ip").send().await?;

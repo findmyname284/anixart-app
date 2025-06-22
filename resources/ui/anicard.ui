@@ -4,14 +4,15 @@
 
     <template class="AnimeCard" parent="GtkBox">
         <property name="orientation">horizontal</property>
-        <property name="spacing">4</property>
-        <property name="margin-start">12</property>
+        <!-- <property name="spacing">4</property> -->
+        <!-- <property name="margin-start">12</property>
         <property name="margin-end">12</property>
-        <property name="margin-bottom">12</property>
+        <property name="margin-bottom">12</property> -->
 
         <child>
-            <object class="GtkImage" id="image">
-                <property name="pixel-size">80</property>
+            <object class="GtkPicture" id="image">
+                <property name="css-classes">anicard-picture</property>
+                <property name="content-fit">cover</property>
             </object>
         </child>
 
@@ -23,11 +24,16 @@
                         <property name="halign">start</property>
                         <property name="wrap">true</property>
                         <property name="wrap-mode">word-char</property>
-                        <property name="max-width-chars">50</property>
-                        <property name="ellipsize">end</property>
-                        <attributes>
-                            <attribute name="weight" value="bold" />
-                        </attributes>
+                        <property name="css-classes">anicard-title</property>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkLabel" id="subtitle">
+                        <property name="halign">start</property>
+                        <property name="wrap">true</property>
+                        <property name="wrap-mode">word-char</property>
+                        <property name="css-classes">anicard-subtitle</property>
                     </object>
                 </child>
 
@@ -36,8 +42,7 @@
                         <property name="halign">start</property>
                         <property name="wrap">true</property>
                         <property name="wrap-mode">word-char</property>
-                        <property name="max-width-chars">50</property>
-                        <property name="ellipsize">end</property>
+                        <property name="css-classes">anicard-description</property>
                     </object>
                 </child>
             </object>

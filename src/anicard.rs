@@ -1,6 +1,7 @@
 use crate::utils::image::*;
+use gtk::prelude::WidgetExt;
 use gtk::subclass::prelude::*;
-use gtk::{Image, Label, glib};
+use gtk::{Label, glib};
 
 glib::wrapper! {
     pub struct AnimeCard(ObjectSubclass<imp::AnimeCardImp>)
@@ -10,15 +11,17 @@ glib::wrapper! {
 
 mod imp {
     use super::*;
-    use gtk::{CompositeTemplate, TemplateChild};
+    use gtk::{CompositeTemplate, Picture, TemplateChild};
 
     #[derive(CompositeTemplate, Default)]
-    #[template(file = "anicard.ui")]
+    #[template(resource = "/kz/findmyname284/anixartd/ui/anicard.ui")]
     pub struct AnimeCardImp {
         #[template_child]
-        pub image: TemplateChild<Image>,
+        pub image: TemplateChild<Picture>,
         #[template_child]
         pub title: TemplateChild<Label>,
+        #[template_child]
+        pub subtitle: TemplateChild<Label>,
         #[template_child]
         pub description: TemplateChild<Label>,
     }
@@ -49,17 +52,19 @@ mod imp {
 }
 
 impl AnimeCard {
-    pub fn new(image: &str, title: &str, description: &str) -> Self {
+    pub fn new(image: &str, title: &str, subtitle: &str, description: &str) -> Self {
         let obj: Self = glib::Object::new::<Self>();
-        obj.set_properties(image, title, description);
+        obj.set_properties(image, title, subtitle, description);
         obj
     }
 
-    pub fn set_properties(&self, image: &str, title: &str, description: &str) {
+    pub fn set_properties(&self, image: &str, title: &str, subtitle: &str, description: &str) {
         let imp = self.imp();
-
+        imp.image.get().set_size_request(165, 220);
+        imp.image.get().set_can_shrink(true);
         load_image(&imp.image, image);
         imp.title.set_text(title);
+        imp.subtitle.set_text(subtitle);
         imp.description.set_text(description);
     }
 }

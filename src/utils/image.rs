@@ -1,7 +1,7 @@
 use blake3::Hasher;
 use gdk::{Paintable, Texture};
 use glib::{Bytes, clone};
-use gtk::Image;
+use gtk::Picture;
 use hex::encode as hex_encode;
 use lru::LruCache;
 use once_cell::sync::Lazy;
@@ -31,7 +31,6 @@ pub async fn download_image_async(
             return Ok(texture);
         }
 
-        // Проверка дискового кэша
         if let Some(texture) = load_cached_image(url) {
             // Сохраняем в кэш памяти для быстрого доступа
             IMAGE_CACHE
@@ -59,7 +58,7 @@ pub async fn download_image_async(
     Ok(texture)
 }
 
-pub fn load_image(image: &Image, url: &str) {
+pub fn load_image(image: &Picture, url: &str) {
     let url = url.to_string();
     let (sender, receiver) = async_channel::bounded::<
         Result<gtk::gdk::Texture, Box<dyn std::error::Error + Send + Sync>>,
@@ -152,7 +151,7 @@ fn save_to_cache(url: &str, bytes: &[u8]) {
     }
 }
 
-pub fn _clear_image_cache() {
+pub fn clear_image_cache() {
     // Очистка кэша в памяти
     IMAGE_CACHE.lock().unwrap().clear();
 
