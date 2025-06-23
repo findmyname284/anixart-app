@@ -23,7 +23,7 @@
                 <property name="scrollable">true</property>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="my_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -47,7 +47,7 @@
                         <child>
                             <object class="GtkBox" id="latest_tab_cards_container">
                                 <property name="orientation">vertical</property>
-                                <property name="spacing">16</property>
+                                <property name="spacing">4</property>
                             </object>
                         </child>
                     </object>
@@ -59,7 +59,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="ongoing_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -77,7 +77,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="announce_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -95,7 +95,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="completed_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -113,7 +113,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="movies_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>

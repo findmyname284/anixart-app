@@ -5,9 +5,8 @@
     <template class="AnimeCard" parent="GtkBox">
         <property name="orientation">horizontal</property>
         <!-- <property name="spacing">4</property> -->
-        <!-- <property name="margin-start">12</property>
+        <property name="margin-start">12</property>
         <property name="margin-end">12</property>
-        <property name="margin-bottom">12</property> -->
 
         <child>
             <object class="GtkPicture" id="image">

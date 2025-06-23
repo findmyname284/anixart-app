@@ -3,14 +3,19 @@ mod api_client;
 mod utils;
 mod windows;
 
+use crate::utils::image::load_image;
+use crate::utils::tab_loader::TabLoader;
 use crate::utils::{config::Config, filter, ui::*};
 use crate::windows::login_window::show_login_window;
-use gtk::Application;
-use gtk::prelude::*;
+use gtk::{Application, GestureClick};
+use gtk::{Label, prelude::*};
 use std::collections::HashSet;
+use std::pin::Pin;
 use std::{cell::RefCell, rc::Rc};
 
-// use crate::utils::image::clear_image_cache;
+// use std::sync::{Arc, RwLock};
+
+// static GLOBAL_UI: RwLock<Option<Arc<AppUi>>> = RwLock::new(None);
 
 async fn my_task() {
     println!("Requesting IP address...");
@@ -20,41 +25,12 @@ async fn my_task() {
     } else {
         println!("Error fetching IP address");
     }
-
-    // match client.episode_target(18909, 30, 3).await {
-    //     Ok(target) => {
-    //         println!("Episode target: {:#?}", target);
-    //     }
-    //     Err(e) => {
-    //         println!("Error fetching episode target: {}", e.to_string());
-    //     }
-    // }
-
-    // let link = "https://kodik.info/seria/1447065/00e6639fa57b1f86b8c3bad55de978ed/720p?d=2025062113&s=18a85af08d061f0bc14b2d12cc6e25ce638ca8f09c42ed7b7a3be10f2898f85f&ip=162.158.163.73";
-    // match client.kodik_video_links(link).await {
-    //     Ok(video) => {
-    //         println!("Video link: {:#?}", video);
-    //     }
-    //     Err(e) => {
-    //         println!("Error fetching video link: {}", e.to_string());
-    //     }
-    // }
-
-    // match client.filter(0).await {
-    //     Ok(filter) => {
-    //         println!("Filter result: {:#?}", filter);
-    //     }
-    //     Err(e) => {
-    //         println!("Error fetching filter: {}", e.to_string());
-    //     }
-    // }
 }
 
 #[tokio::main]
 async fn main() {
     let task = tokio::task::spawn(my_task());
     task.await.unwrap();
-    // clear_image_cache();
 
     if gio::resources_register_include!("app.gresource").is_err() {
         eprintln!("Failed to register resources");
@@ -89,72 +65,119 @@ fn show_main_window(app: &Application, state: Rc<RefCell<Config>>) {
         println!("User is not authenticated");
     }
 
-    let active_tab = 1;
+    let init_tab = ui.home_tabs.current_page().unwrap_or(1) as usize;
 
-    let loaded_tabs: Rc<RefCell<HashSet<u32>>> = Rc::new(RefCell::new(HashSet::new()));
-    loaded_tabs.borrow_mut().insert(active_tab);
+    let fetch_fns: Vec<_> = vec![
+        |page| {
+            api_client::AnixartClient::global()
+                .filter(filter::FilterRequestBuilder::new().build(), page)
+        },
+        |page| {
+            api_client::AnixartClient::global()
+                .filter(filter::FilterRequestBuilder::new().build(), page)
+        },
+        |page| {
+            api_client::AnixartClient::global().filter(
+                filter::FilterRequestBuilder::new()
+                    .status_id(Some(2))
+                    .build(),
+                page,
+            )
+        },
+        |page| {
+            api_client::AnixartClient::global().filter(
+                filter::FilterRequestBuilder::new()
+                    .status_id(Some(3))
+                    .build(),
+                page,
+            )
+        },
+        |page| {
+            api_client::AnixartClient::global().filter(
+                filter::FilterRequestBuilder::new()
+                    .status_id(Some(1))
+                    .build(),
+                page,
+            )
+        },
+        |page| {
+            api_client::AnixartClient::global().filter(
+                filter::FilterRequestBuilder::new()
+                    .category_id(Some(2))
+                    .build(),
+                page,
+            )
+        },
+    ];
+    for (i, loader_fn) in fetch_fns.into_iter().enumerate() {
+        let container = &ui.home_cards_containers[i];
+        let scrolled = &ui.home_scrolled_windows[i];
+        let loader = TabLoader::new(container, Rc::new(ui.clone()), loader_fn);
+        loader.connect_scroll(scrolled);
+        ui.tab_loaders.borrow_mut().push(loader);
+    }
 
-    let tabs = ui.home_tabs.clone();
-    let cards_containers = ui.home_cards_containers.clone();
-    tabs.connect_switch_page({
-        let loaded_tabs = loaded_tabs.clone();
-        let cards_containers = cards_containers.clone();
-        move |_, _, index| {
-            let mut loaded = loaded_tabs.borrow_mut();
-            if !loaded.contains(&index) {
-                loaded.insert(index);
-                println!("Switched to tab {}: ", index);
+    let loaded = Rc::new(RefCell::new(HashSet::new()));
+    loaded.borrow_mut().insert(init_tab);
 
-                match index {
-                    1 => {
-                        gtk::glib::spawn_future_local(load_latest_tab(
-                            cards_containers[index as usize].clone(),
-                        ));
-                    }
-                    2 => {
-                        gtk::glib::spawn_future_local(load_ongoing_tab(
-                            cards_containers[index as usize].clone(),
-                        ));
-                    }
-                    3 => {
-                        gtk::glib::spawn_future_local(load_announce_tab(
-                            cards_containers[index as usize].clone(),
-                        ));
-                    }
-                    4 => {
-                        gtk::glib::spawn_future_local(load_completed_tab(
-                            cards_containers[index as usize].clone(),
-                        ));
-                    }
-                    5 => {
-                        gtk::glib::spawn_future_local(load_movies_tab(
-                            cards_containers[index as usize].clone(),
-                        ));
-                    }
-                    _ => {
-                        println!("Tab {} is not implemented yet", index);
-                    }
-                }
-            } else {
-                println!("Tab {} already loaded", index);
-            }
+    let initial_loader = ui.tab_loaders.borrow()[init_tab].clone();
+    initial_loader.load_more();
+
+    let tabs_switchers = ui.home_tabs.clone();
+    let tab_loaders = ui.tab_loaders.clone();
+    let loaded_flag = loaded.clone();
+
+    tabs_switchers.connect_switch_page(move |_, _, index| {
+        let idx = index as usize;
+        let mut loaded = loaded_flag.borrow_mut();
+        if !loaded.contains(&idx) {
+            loaded.insert(idx);
+            let loader = tab_loaders.borrow()[idx].clone();
+            loader.load_more();
         }
     });
 
-    gtk::glib::spawn_future_local(load_latest_tab(
-        cards_containers[active_tab as usize].clone(),
-    ));
+    let init_bm = ui.bookmarks_tabs.current_page().unwrap_or(2) as usize;
+    let bm_containers = ui.bm_cards_containers.clone();
+    let bm_loader_refs: Rc<RefCell<Vec<Rc<TabLoader>>>> = Rc::new(RefCell::new(Vec::new()));
+
+    let fetch_bm: Vec<
+        Box<
+            dyn Fn(u32) -> Pin<Box<dyn Future<Output = Result<serde_json::Value, reqwest::Error>>>>,
+        >,
+    > = vec![
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().collection_favorite(page))),
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().history(page))),
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().favorite(page))),
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().profile_list(1, page))),
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().profile_list(2, page))),
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().profile_list(3, page))),
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().profile_list(4, page))),
+        Box::new(|page| Box::pin(api_client::AnixartClient::global().profile_list(5, page))),
+    ];
+
+    for (i, fetch_fn) in fetch_bm.into_iter().enumerate() {
+        let container = &bm_containers[i];
+        let scrolled = &ui.bm_scrolled_windows[i];
+        let loader = TabLoader::new(container, Rc::new(ui.clone()), move |p| fetch_fn(p));
+        loader.connect_scroll(scrolled);
+        bm_loader_refs.borrow_mut().push(loader);
+    }
+
+    let bm_loaded = Rc::new(RefCell::new(HashSet::new()));
 
     ui.view_stack.connect_visible_child_notify({
         let ui = ui.clone();
         move |stack| match stack.visible_child_name().unwrap().as_str() {
-            "home" => println!("Home tab activated"),
-            "review" => println!("Review tab activated"),
+            "home" => stack.set_child_visible(true),
+            "review" => {}
             "bookmarks" => {
-                gtk::glib::spawn_future_local(load_bookmarks_page(
+                load_bookmarks_page(
                     ui.bookmarks_tabs.clone(),
-                    ui.bookmarks_cards_containers.clone(),
-                ));
+                    bm_loader_refs.clone(),
+                    bm_loaded.clone(),
+                    init_bm,
+                );
             }
             _ => (),
         }
@@ -164,150 +187,30 @@ fn show_main_window(app: &Application, state: Rc<RefCell<Config>>) {
     ui.window.present();
 }
 
-async fn load_latest_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    let filter = filter::FilterRequestBuilder::new().build();
-    match client.filter(filter, 0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn load_ongoing_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    let filter = filter::FilterRequestBuilder::new()
-        .status_id(Some(2))
-        .build();
-    match client.filter(filter, 0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn load_announce_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    let filter = filter::FilterRequestBuilder::new()
-        .status_id(Some(3))
-        .build();
-    match client.filter(filter, 0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn load_completed_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    let filter = filter::FilterRequestBuilder::new()
-        .status_id(Some(1))
-        .build();
-    match client.filter(filter, 0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn load_movies_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    let filter = filter::FilterRequestBuilder::new()
-        .category_id(Some(2))
-        .build();
-    match client.filter(filter, 0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-// async fn load_review_page() {
-//     let client = api_client::AnixartClient::global();
-// }
-
-async fn load_bookmarks_page(tabs: gtk::Notebook, cards_containers: Vec<gtk::Box>) {
-    let loaded_tabs: Rc<RefCell<HashSet<u32>>> = Rc::new(RefCell::new(HashSet::new()));
-
-    load_bookmark_page(2, cards_containers.clone()).await;
-
-    tabs.connect_switch_page({
-        let loaded_tabs = loaded_tabs.clone();
+fn load_bookmarks_page(
+    bookmarks_tabs: gtk::Notebook,
+    bm_loader_refs: Rc<RefCell<Vec<Rc<TabLoader>>>>,
+    bm_loaded: Rc<RefCell<HashSet<usize>>>,
+    init_bm: usize,
+) {
+    if !bm_loaded.borrow().contains(&init_bm) {
+        bm_loaded.borrow_mut().insert(init_bm);
+        bm_loader_refs.borrow()[init_bm].clone().load_more();
+    }
+    bookmarks_tabs.connect_switch_page({
+        let loaders = bm_loader_refs.clone();
+        let loaded = bm_loaded.clone();
         move |_, _, index| {
-            let mut loaded = loaded_tabs.borrow_mut();
-            if !loaded.contains(&index) {
-                loaded.insert(index);
-                gtk::glib::spawn_future_local(load_bookmark_page(index as usize, cards_containers.clone()));
-                println!("Switched to tab {}: ", index);
-            } else {
-                println!("Tab {} already loaded", index);
+            let idx = index as usize;
+            if !loaded.borrow().contains(&idx) {
+                loaded.borrow_mut().insert(idx);
+                loaders.borrow()[idx].clone().load_more();
             }
         }
     });
 }
 
-async fn load_bookmark_page(index: usize, cards_containers: Vec<gtk::Box>) {
-    match index {
-        0 => load_collection_tab(cards_containers[index].clone()).await,
-        1 => load_history_tab(cards_containers[index].clone()).await,
-        2 => load_favorite_tab(cards_containers[index].clone()).await,
-        3 => load_profile_list(1, cards_containers[index].clone()).await,
-        4 => load_profile_list(2, cards_containers[index].clone()).await,
-        5 => load_profile_list(3, cards_containers[index].clone()).await,
-        6 => load_profile_list(4, cards_containers[index].clone()).await,
-        7 => load_profile_list(5, cards_containers[index].clone()).await,
-        _ => {
-            println!("Tab {} is not implemented yet", index);
-        }
-    }
-}
-
-async fn load_history_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    match client.history(0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn load_favorite_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    match client.favorite(0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn load_profile_list(status_id: u32, cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    match client.profile_list(status_id, 0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn load_collection_tab(cards_container: gtk::Box) {
-    let client = api_client::AnixartClient::global();
-    match client.collection_favorite(0).await {
-        Ok(json) => show_titles(cards_container, json).await,
-        Err(e) => {
-            println!("Error: {}", e.to_string());
-        }
-    };
-}
-
-async fn show_titles(cards_container: gtk::Box, json: serde_json::Value) {
+async fn show_titles(ui: Rc<AppUi>, cards_container: gtk::Box, json: serde_json::Value) {
     if let Some(content) = json["content"].as_array() {
         for item in content {
             if let (Some(title), Some(desc), Some(image), grade_opt) = (
@@ -353,9 +256,44 @@ async fn show_titles(cards_container: gtk::Box, json: serde_json::Value) {
                 };
 
                 let card = anicard::AnimeCard::new(image, title, &subtitle, desc);
+                card.add_css_class("anicard");
                 cards_container.append(&card);
-                // glib::idle_add_local(move || glib::ControlFlow::Break);
+                let click = GestureClick::new();
+                click.connect_released({
+                    let item = item.clone();
+                    let ui = ui.clone();
+                    move |_, _, _, _| {
+                        show_details(ui.clone(), item.clone());
+                    }
+                });
+                card.add_controller(click);
             }
         }
     }
+}
+
+fn show_details(ui: Rc<AppUi>, item: serde_json::Value) {
+    println!("Details: {:#?}", item);
+    let id = item["id"].as_u64().unwrap();
+    let title = item["title_ru"].as_str().unwrap();
+    let title_original = item["title_original"].as_str().unwrap();
+    let genres = item["genres"].as_str().unwrap();
+    let studio = item["studio"].as_str().unwrap();
+    let desc = item["description"].as_str().unwrap();
+    let image = item["image"].as_str().unwrap();
+    ui.view_stack.set_visible_child_name("details");
+
+    let builder = ui.templates.anime_detail.clone();
+
+    let title_label: gtk::Label = builder.object("anime_title_label").unwrap();
+    let original_label: gtk::Label = builder.object("original_label").unwrap();
+    let poster_image: gtk::Picture = builder.object("poster_image").unwrap();
+    let genres_label: gtk::Label = builder.object("genres_label").unwrap();
+    let studio_label: gtk::Label = builder.object("studio_label").unwrap();
+
+    title_label.set_text(title);
+    original_label.set_text(title_original);
+    genres_label.set_text(genres);
+    studio_label.set_text(studio);
+    load_image(&poster_image, image);
 }

@@ -1,16 +1,22 @@
+use std::{cell::RefCell, rc::Rc};
+
 use adw::{self};
 use gdk::Display;
 use gtk::{prelude::*, *};
+
+use crate::utils::tab_loader::TabLoader;
 
 pub const APP_ID: &str = "kz.findmyname284.anixartd";
 pub const APP_PATH: &str = "/kz/findmyname284/anixartd";
 
 // Структура для загрузки UI-шаблонов
+#[derive(Clone)]
 pub struct UiTemplates {
     pub main: Builder,
     pub home: Builder,
     pub bookmarks: Builder,
     pub login: Builder,
+    pub anime_detail: Builder,
 }
 
 impl UiTemplates {
@@ -20,6 +26,7 @@ impl UiTemplates {
             home: Builder::from_resource(&format!("{}/ui/home_page.ui", APP_PATH)),
             bookmarks: Builder::from_resource(&format!("{}/ui/bookmarks_page.ui", APP_PATH)),
             login: Builder::from_resource(&format!("{}/ui/login_window.ui", APP_PATH)),
+            anime_detail: Builder::from_resource(&format!("{}/ui/anime_detail.ui", APP_PATH)),
         }
     }
 }
@@ -30,8 +37,12 @@ pub struct AppUi {
     pub view_stack: adw::ViewStack,
     pub home_tabs: Notebook,
     pub bookmarks_tabs: Notebook,
+    pub home_scrolled_windows: Vec<ScrolledWindow>,
+    pub bm_scrolled_windows: Vec<ScrolledWindow>,
     pub home_cards_containers: Vec<gtk::Box>,
-    pub bookmarks_cards_containers: Vec<gtk::Box>,
+    pub bm_cards_containers: Vec<gtk::Box>,
+    pub tab_loaders: RefCell<Vec<Rc<TabLoader>>>,
+    pub templates: UiTemplates,
 }
 
 impl AppUi {
@@ -41,11 +52,16 @@ impl AppUi {
             .object("main_window")
             .expect("Failed to find main_window in main template");
         window.set_application(Some(app));
+        // window.set_hide_on_close(true);
+        // window.fullscreen();
 
         let view_stack: adw::ViewStack = templates
             .main
             .object("view_stack")
             .expect("Failed to find view_stack in main template");
+
+        view_stack.set_visible_child_name("home");
+
         let home_container: gtk::Box = templates
             .main
             .object("home_container")
@@ -56,6 +72,102 @@ impl AppUi {
             .object("home_content")
             .expect("Failed to find home_content in home template");
         home_container.append(&home_content);
+
+        let anime_detail_container: gtk::Box = templates
+            .main
+            .object("anime_detail_container")
+            .expect("Failed to find anime_detail_container in main template");
+
+        let anime_detail_box: gtk::Box = templates
+            .anime_detail
+            .object("anime_detail_box")
+            .expect("Failed to find anime_detail_box in anime_detail template");
+        anime_detail_container.append(&anime_detail_box);
+
+        let my_scrolled_window = templates
+            .home
+            .object("my_scrolled_window")
+            .expect("Failed to find my_scrolled_window in home template");
+        let latest_scrolled_window = templates
+            .home
+            .object("latest_scrolled_window")
+            .expect("Failed to find latest_scrolled_window in home template");
+        let ongoing_scrolled_window = templates
+            .home
+            .object("ongoing_scrolled_window")
+            .expect("Failed to find ongoing_scrolled_window in home template");
+        let announce_scrolled_window = templates
+            .home
+            .object("announce_scrolled_window")
+            .expect("Failed to find announce_scrolled_window in home template");
+        let completed_scrolled_window = templates
+            .home
+            .object("completed_scrolled_window")
+            .expect("Failed to find completed_scrolled_window in home template");
+        let movies_scrolled_window = templates
+            .home
+            .object("movies_scrolled_window")
+            .expect("Failed to find movies_scrolled_window in home template");
+
+        let home_scrolled_windows = vec![
+            my_scrolled_window,
+            latest_scrolled_window,
+            ongoing_scrolled_window,
+            announce_scrolled_window,
+            completed_scrolled_window,
+            movies_scrolled_window,
+        ];
+
+        let collections_scrolled_window: ScrolledWindow = templates
+            .bookmarks
+            .object("collections_scrolled_window")
+            .expect("Failed to find collections_scrolled_window in bookmarks template");
+
+        let history_scrolled_window = templates
+            .bookmarks
+            .object("history_scrolled_window")
+            .expect("Failed to find history_scrolled_window in bookmarks template");
+
+        let favorite_scrolled_window = templates
+            .bookmarks
+            .object("favorite_scrolled_window")
+            .expect("Failed to find favorite_scrolled_window in bookmarks template");
+
+        let watching_scrolled_window = templates
+            .bookmarks
+            .object("watching_scrolled_window")
+            .expect("Failed to find watching_scrolled_window in bookmarks template");
+
+        let plans_scrolled_window = templates
+            .bookmarks
+            .object("plans_scrolled_window")
+            .expect("Failed to find plans_scrolled_window in bookmarks template");
+
+        let viewed_scrolled_window = templates
+            .bookmarks
+            .object("viewed_scrolled_window")
+            .expect("Failed to find viewed_scrolled_window in bookmarks template");
+
+        let hold_scrolled_window = templates
+            .bookmarks
+            .object("hold_scrolled_window")
+            .expect("Failed to find hold_scrolled_window in bookmarks template");
+
+        let dropped_scrolled_window = templates
+            .bookmarks
+            .object("dropped_scrolled_window")
+            .expect("Failed to find dropped_scrolled_window in bookmarks template");
+
+        let bm_scrolled_windows = vec![
+            collections_scrolled_window,
+            history_scrolled_window,
+            favorite_scrolled_window,
+            watching_scrolled_window,
+            plans_scrolled_window,
+            viewed_scrolled_window,
+            hold_scrolled_window,
+            dropped_scrolled_window,
+        ];
 
         let bookmarks_container: gtk::Box = templates
             .main
@@ -151,7 +263,7 @@ impl AppUi {
             .object("dropped_tab_cards_container")
             .expect("Failed to find dropped_tab_cards_container in bookmarks template");
 
-        let bookmarks_cards_containers = vec![
+        let bm_cards_containers = vec![
             collections_tab_cards_container,
             history_tab_cards_container,
             favorite_tab_cards_container,
@@ -173,11 +285,15 @@ impl AppUi {
 
         Self {
             window,
+            templates: templates.clone(),
             view_stack,
             home_tabs,
             bookmarks_tabs,
+            home_scrolled_windows,
+            bm_scrolled_windows,
             home_cards_containers,
-            bookmarks_cards_containers,
+            bm_cards_containers,
+            tab_loaders: Vec::new().into(),
         }
     }
 }

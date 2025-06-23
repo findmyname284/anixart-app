@@ -23,7 +23,7 @@
                 <property name="scrollable">true</property>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="collections_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -41,7 +41,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="history_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -59,7 +59,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="favorite_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -77,7 +77,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="watching_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -95,7 +95,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="plans_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -113,7 +113,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="viewed_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -131,7 +131,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="hold_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>
@@ -149,7 +149,7 @@
                 </child>
 
                 <child>
-                    <object class="GtkScrolledWindow">
+                    <object class="GtkScrolledWindow" id="dropped_scrolled_window">
                         <property name="vexpand">true</property>
                         <property name="hexpand">true</property>
                         <child>

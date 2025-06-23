@@ -1,8 +1,7 @@
+use std::env;
+
 use once_cell::sync::Lazy;
-use reqwest::{
-    header::{HeaderMap, HeaderValue, CONNECTION, HOST, ORIGIN, REFERER}, Client, Proxy
-};
-use serde::Serialize;
+use reqwest::{Client, Proxy};
 use serde_json::{Value, json};
 use urlencoding::encode;
 
@@ -24,10 +23,18 @@ static HTTP_CLIENT: Lazy<AnixartClient> = Lazy::new(|| {
         .danger_accept_invalid_certs(true)
         .timeout(std::time::Duration::from_secs(15));
 
+    let http_proxy = env::var("http_proxy").ok();
+
     if let Some(proxy) = config.network.proxy {
         if !proxy.is_empty() {
             if let Ok(proxy) = Proxy::all(&proxy) {
                 client_builder = client_builder.proxy(proxy);
+            }
+        } else {
+            if let Some(proxy) = http_proxy {
+                if let Ok(proxy) = Proxy::all(&proxy) {
+                    client_builder = client_builder.proxy(proxy);
+                }
             }
         }
     }
@@ -104,8 +111,11 @@ impl AnixartClient {
         Ok(auth_response)
     }
 
-    pub async fn filter(&self, filter: filter::FilterRequest, index: u32) -> Result<Value, reqwest::Error> {
-
+    pub async fn filter(
+        &self,
+        filter: filter::FilterRequest,
+        index: u32,
+    ) -> Result<Value, reqwest::Error> {
         let url = format!(
             "{}/filter/{}?extended_mode=true&token={}",
             self.base_url, index, self.token
@@ -405,10 +415,13 @@ impl AnixartClient {
     }
 
     // https://kodik.biz/api/video-links?p=56a768d08f43091901c44b54fe970049&link=//kodik.info/seria/1447065/00e6639fa57b1f86b8c3bad55de978ed/720p&d=2025062113&s=18a85af08d061f0bc14b2d12cc6e25ce638ca8f09c42ed7b7a3be10f2898f85f&ip=162.158.163.73
-    // https://kodik.biz/api/video-links?p=56a768d08f43091901c44b54fe970049&link=//kodik.info/seria/1447065/00e6639fa57b1f86b8c3bad55de978ed/720p&d=2025062121&s=uZWc40aIqZ8F6FBIFTknx7pNgK7GALHheEtyXvv0r5tSx7yS7Kc6xPM3EZqmqcF3&ip=172.68.207.149
+    // https://kodik.biz/api/video-links?p=56a768d08f43091901c44b54fe970049&link=//kodik.info/seria/1450956/d266751a41f01c560b2803282ab87d2d/720p&d=2025062300&s=uDFHE21MHLqQvmd4U6LX019JW3tBjir4hkRp6qOCkegQh3rh7RWqewOfauYZkNjL&ip=108.162.226.110
     pub async fn kodik_video_links(&self, link: &str) -> Result<Value, reqwest::Error> {
         let token = "56a768d08f43091901c44b54fe970049";
-        let url = format!("https://kodik.biz/api/video-links?p={}&link={}", token, link);
+        let url = format!(
+            "https://kodik.biz/api/video-links?p={}&link={}",
+            token, link
+        );
 
         let response = self.client.get(&url).send().await?;
 
@@ -417,36 +430,6 @@ impl AnixartClient {
         let video_links_response = response.json::<Value>().await?;
         Ok(video_links_response)
     }
-
-    // https://cloud.kodik-storage.com/useruploads/42a02815-596b-41c1-8db7-b0abdb3ecc65/58fc4da0d10feede0a53b6fe3907b3ff:2025062100/360.mp4:hls:manifest.m3u8
-    // pub async fn kodik_video_stream(&self, url: &str) -> Result<(), reqwest::Error> {
-    //     let mut headers = HeaderMap::new();
-    //     headers.insert(HOST, HeaderValue::from_static("cloud.kodik-storage.com"));
-    //     headers.insert(USER_AGENT, HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36"));
-    //     headers.insert("Accept-Encoding", HeaderValue::from_static("gzip, deflate, br"));
-    //     headers.insert("accept", HeaderValue::from_static("*/*"));
-    //     headers.insert(REFERER, HeaderValue::from_static("https://kodik.info/"));
-    //     headers.insert(ORIGIN, HeaderValue::from_static("https://kodik.info"));
-    //     headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
-    //     headers.insert("Content-Type", HeaderValue::from_static("text/html"));
-
-    //     let client = reqwest::Client::builder()
-    //         .danger_accept_invalid_certs(true)
-    //         .build()?;
-
-    //     let response = client.get(url).headers(headers).send().await?;
-
-    //     response.error_for_status_ref()?;
-
-    //     println!("Status: {}", response.status());
-    //     println!("Headers:\n{:#?}", response.headers());
-
-    //     // Читаем тело ответа как текст
-    //     let body = response.text().await?;
-    //     println!("Body:\n{}", body);
-
-    //     Ok(())
-    // }
 
     pub async fn get_ip(&self) -> Result<Value, reqwest::Error> {
         let response = self.client.get("https://httpbin.org/ip").send().await?;

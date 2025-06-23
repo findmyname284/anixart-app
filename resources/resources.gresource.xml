@@ -7,6 +7,7 @@
         <file>ui/home_page.ui</file>
         <file>ui/bookmarks_page.ui</file>
         <file>ui/anicard.ui</file>
+        <file>ui/anime_detail.ui</file>
         <file>img/logo_dark.png</file>
     </gresource>
 </gresources>

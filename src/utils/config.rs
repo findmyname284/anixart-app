@@ -8,23 +8,34 @@ const CONFIG_FILE: &str = "config.toml";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Config {
+    #[serde(default)]
     pub first_run: bool,
+    #[serde(default)]
+    pub player: PlayerConfig,
+    #[serde(default)]
     pub ui: UiConfig,
+    #[serde(default)]
     pub network: NetworkConfig,
+    #[serde(default)]
     pub auth: AuthConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub(crate) struct UiConfig {
     pub is_dark_theme: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub(crate) struct PlayerConfig {
+    pub fullscreen_on_play: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub(crate) struct NetworkConfig {
     pub proxy: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub(crate) struct AuthConfig {
     pub token: Option<String>,
 }
@@ -32,6 +43,9 @@ pub(crate) struct AuthConfig {
 impl Default for Config {
     fn default() -> Self {
         Config {
+            player: PlayerConfig {
+                fullscreen_on_play: false,
+            },
             first_run: true,
             ui: UiConfig {
                 is_dark_theme: false,

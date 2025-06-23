@@ -1,5 +1,4 @@
 use crate::utils::image::*;
-use gtk::prelude::WidgetExt;
 use gtk::subclass::prelude::*;
 use gtk::{Label, glib};
 
@@ -60,11 +59,13 @@ impl AnimeCard {
 
     pub fn set_properties(&self, image: &str, title: &str, subtitle: &str, description: &str) {
         let imp = self.imp();
-        imp.image.get().set_size_request(165, 220);
-        imp.image.get().set_can_shrink(true);
         load_image(&imp.image, image);
         imp.title.set_text(title);
+        imp.title.set_lines(3);
+        imp.title.set_ellipsize(gtk::pango::EllipsizeMode::End);
         imp.subtitle.set_text(subtitle);
+        imp.subtitle.set_lines(8);
+        imp.subtitle.set_ellipsize(gtk::pango::EllipsizeMode::End);
         imp.description.set_text(description);
     }
 }

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <object class="GtkBox" id="anime_detail_box">
+        <property name="orientation">vertical</property>
+        <property name="spacing">12</property>
+        <child>
+            <object class="GtkScrolledWindow">
+                <property name="vexpand">true</property>
+                <property name="hexpand">true</property>
+                <child>
+                    <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <child>
+                            <object class="GtkBox">
+                                <property name="orientation">vertical</property>
+                                <child>
+                                    <object class="GtkPicture" id="poster_image">
+                                        <property name="halign">center</property>
+                                        <property name="vexpand">false</property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkBox" id="info_box">
+                                        <property name="orientation">vertical</property>
+                                        <property name="spacing">6</property>
+
+                                        <!-- Название и сезон -->
+                                        <child>
+                                            <object class="GtkLabel" id="anime_title_label">
+                                                <property name="wrap">true</property>
+                                                <style>
+                                                    <class name="title-2" />
+                                                </style>
+                                            </object>
+                                        </child>
+
+                                        <!-- Оригинальное название -->
+                                        <child>
+                                            <object class="GtkLabel" id="original_label">
+                                                <style>
+                                                    <class name="dim-label" />
+                                                </style>
+                                            </object>
+                                        </child>
+
+                                        <!-- Метка 16+ -->
+                                        <child>
+                                            <object class="GtkLabel" id="age_label">
+                                                <property name="label">16+</property>
+                                                <style>
+                                                    <class name="badge" />
+                                                </style>
+                                            </object>
+                                        </child>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+
+                        <!-- Кнопки: Не смотрю / В избранном и т.п. -->
+                        <child>
+                            <object class="GtkBox">
+                                <property name="spacing">6</property>
+                                <child>
+                                    <object class="GtkDropDown">
+                                        <property name="model">
+                                            <object class="GtkStringList">
+                                                <items>
+                                                    <item translatable="yes">Не смотрю</item>
+                                                    <item translatable="yes">Home</item>
+                                                    <item translatable="yes">Subway</item>
+                                                </items>
+                                            </object>
+                                        </property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkToggleButton" id="bookmark_button">
+                                        <property name="label">7034</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+
+                        <!-- Кнопка воспроизведения -->
+                        <child>
+                            <object class="GtkButton" id="play_button">
+                                <property name="label">▶ Воспроизвести</property>
+                                <style>
+                                    <class name="suggested-action" />
+                                </style>
+                            </object>
+                        </child>
+
+                        <!-- Детальная информация -->
+                        <child>
+                            <object class="GtkBox" id="meta_info_box">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">4</property>
+
+                                <child>
+                                    <object class="GtkLabel">
+                                        <property name="label">Япония, весна 2025 г.</property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel">
+                                        <property name="label">12 эп. по ~23 мин.</property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel">
+                                        <property name="label">Сериал, выходит</property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel" id="studio_label">
+                                        <property name="label">Lapin Track, Хонобу, Камбэ</property>
+                                    </object>
+                                </child>
+                            </object>
+                        </child>
+
+                        <!-- Теги -->
+                        <child>
+                            <object class="GtkLabel" id="genres_label">
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </object>
+</interface>
